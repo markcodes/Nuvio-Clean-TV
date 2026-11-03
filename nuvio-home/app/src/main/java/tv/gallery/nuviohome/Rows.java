@@ -36,13 +36,13 @@ final class Rows {
     /** Apple TV-style focus: the card zooms in and lifts on a soft shadow; no ring. */
     /** Every tile sits on a soft shadow, like Apple TV; focus deepens it. */
     static void shadow(View art) {
-        art.setElevation(dp(art.getContext(), 6));
+        art.setElevation(dp(art.getContext(), 12));
         if (android.os.Build.VERSION.SDK_INT >= 28) { art.setOutlineSpotShadowColor(0xFF000000); art.setOutlineAmbientShadowColor(0xFF000000); }
     }
     static void lift(View card, View art, boolean f) {
         card.animate().scaleX(f ? ZOOM : 1f).scaleY(f ? ZOOM : 1f).translationZ(f ? dp(card.getContext(), 12) : 0).setDuration(160)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
-        art.setElevation(dp(card.getContext(), f ? 16 : 6));
+        art.setElevation(dp(card.getContext(), f ? 28 : 12));
         card.setZ(f ? 1 : 0);
     }
     static GradientDrawable ring(Context c, float r) { GradientDrawable g = new GradientDrawable(); g.setCornerRadius(dp(c, r)); g.setStroke(dp(c, 3), Color.WHITE); g.setColor(Color.TRANSPARENT); return g; }
@@ -63,7 +63,7 @@ final class Rows {
             box.setLayoutParams(new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             TextView t = text(c, "", 18, 0xF2FFFFFF, true); t.setPadding(startPad + dp(c, 4), dp(c, 10), 0, 0); box.addView(t);
             RecyclerView r = new RecyclerView(c); r.setLayoutManager(new LinearLayoutManager(c, LinearLayoutManager.HORIZONTAL, false));
-            r.setRecycledViewPool(cardPool); r.setClipToPadding(false); r.setClipChildren(true); r.setPadding(startPad, dp(c, 22), dp(c, 48), dp(c, 22));
+            r.setRecycledViewPool(cardPool); r.setClipToPadding(false); r.setClipChildren(true); r.setPadding(startPad, dp(c, 22), dp(c, 48), dp(c, 32));   // room under the tiles for their shadows
             r.setItemAnimator(null); r.setHasFixedSize(true);
             box.setClipChildren(false); box.addView(r, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             return new VH(box, t, r);

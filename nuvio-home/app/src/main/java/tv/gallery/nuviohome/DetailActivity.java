@@ -601,6 +601,7 @@ public class DetailActivity extends Activity {
         }).start();
     }
     @Override public boolean dispatchKeyEvent(KeyEvent e) {
+        if (e.getAction() == KeyEvent.ACTION_DOWN && e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT && reviewPanel == null && getCurrentFocus() != null && RowsLayout.atRowEnd(getCurrentFocus())) return true;
         if (reviewPanel != null && e.getKeyCode() == KeyEvent.KEYCODE_BACK) { if (e.getAction() == KeyEvent.ACTION_UP) closeReview(); return true; }
         if (e.getKeyCode() == KeyEvent.KEYCODE_BACK && e.getAction() == KeyEvent.ACTION_DOWN && scroll != null && scroll.getScrollY() > 0) {
             playBtn.requestFocus(); scroll.smoothScrollTo(0, 0); return true;

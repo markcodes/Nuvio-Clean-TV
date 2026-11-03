@@ -156,19 +156,19 @@ public class PersonActivity extends Activity {
         page.addView(s, new LinearLayout.LayoutParams(-1, -2));
         sections.add(s);
     }
-    private LinearLayout.LayoutParams lp() { LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(-2, -2); l.rightMargin = dp(this, 18); return l; }
+    private LinearLayout.LayoutParams lp() { LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(-2, -2); l.rightMargin = dp(this, 16); return l; }
 
     private View card(String image, String caption, View.OnClickListener l) {
-        int w = dp(this, 120), h = dp(this, 180);
+        int w = dp(this, 102), h = dp(this, 153);
         LinearLayout card = new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL); card.setFocusable(true); card.setClickable(true); card.setClipChildren(false);
         FrameLayout art = new FrameLayout(this); art.setBackground(round(0xFF2A2C33, Rows.CORNER, this)); art.setClipToOutline(true); Rows.shadow(art);
         TextView fb = text(this, caption, 14, 0xB3FFFFFF, true); fb.setGravity(Gravity.CENTER); fb.setPadding(dp(this, 10), 0, dp(this, 10), 0); art.addView(fb, new FrameLayout.LayoutParams(-1, -1));
         ImageView iv = new ImageView(this); iv.setScaleType(ImageView.ScaleType.CENTER_CROP); art.addView(iv, new FrameLayout.LayoutParams(-1, -1));
         card.addView(art, new LinearLayout.LayoutParams(w, h));
-        TextView c = text(this, caption, 12, Color.WHITE, true); c.setSingleLine(true); c.setMaxWidth(w); c.setPadding(0, dp(this, 10), 0, 0);
+        TextView c = text(this, caption, 11, Color.WHITE, true); c.setSingleLine(true); c.setMaxWidth(w); c.setPadding(0, dp(this, 9), 0, 0);
         c.setEllipsize(android.text.TextUtils.TruncateAt.END); c.setTypeface(android.graphics.Typeface.DEFAULT); c.setGravity(Gravity.CENTER_HORIZONTAL);
         card.addView(c, new LinearLayout.LayoutParams(w, -2));
-        card.setOnFocusChangeListener((v, f) -> { Rows.lift(v, art, f); c.setTranslationY(f ? dp(this, 18) : 0); });
+        card.setOnFocusChangeListener((v, f) -> { Rows.lift(v, art, f); c.setTranslationY(f ? dp(this, 16) : 0); });
         card.setOnClickListener(l);
         if (image != null) Images.load(iv, image, w, null);
         return card;
@@ -187,9 +187,18 @@ public class PersonActivity extends Activity {
         }).start();
     }
 
+    @Override public boolean dispatchKeyEvent(android.view.KeyEvent e) {
+        if (e.getAction() == android.view.KeyEvent.ACTION_DOWN && e.getKeyCode() == android.view.KeyEvent.KEYCODE_DPAD_RIGHT && getCurrentFocus() != null && RowsLayout.atRowEnd(getCurrentFocus())) return true;
+        return super.dispatchKeyEvent(e);
+    }
     private void follow(View n) {
         if (n == null) return;
-        for (View s : sections) if (inside(n, s)) { scroll.smoothScrollTo(0, Math.max(0, s.getTop() - dp(this, 20))); return; }
+        for (View s : sections) if (inside(n, s)) {
+            int need = s.getBottom() + dp(this, 12) - scroll.getHeight();   // scroll only as far as needed to show the whole row
+            if (need > scroll.getScrollY()) scroll.smoothScrollTo(0, need);
+            else if (s.getTop() < scroll.getScrollY()) scroll.smoothScrollTo(0, Math.max(0, s.getTop() - dp(this, 20)));
+            return;
+        }
     }
     private static boolean inside(View v, View group) { while (v != null) { if (v == group) return true; ViewParent p = v.getParent(); v = p instanceof View ? (View) p : null; } return false; }
     private static String initials(String n) {

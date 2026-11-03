@@ -4,5 +4,8 @@
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowAnimationStyle">@null</item>
+        <!-- darker tile shadows than the system default -->
+        <item name="android:spotShadowAlpha">0.6</item>
+        <item name="android:ambientShadowAlpha">0.28</item>
     </style>
 </resources>

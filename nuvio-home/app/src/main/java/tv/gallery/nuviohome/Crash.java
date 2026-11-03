@@ -34,5 +34,5 @@ final class Crash {
         } catch (Exception ignored) { }
         f.delete();
     }
-    private static final class BuildConfigLite { static final String VERSION = "0.22"; }
+    private static final class BuildConfigLite { static final String VERSION = "0.23"; }
 }
