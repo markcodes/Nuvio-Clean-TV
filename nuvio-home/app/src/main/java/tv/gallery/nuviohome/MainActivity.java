@@ -282,52 +282,54 @@ public class MainActivity extends Activity implements Rows.Listener {
     private static final String[] LABELS = {"Catalog", "Applications", "Inputs", "Clock", "Settings", "Nuvio Settings"};
     private void buildSidebar() {
         sidebar = new LinearLayout(this); sidebar.setOrientation(LinearLayout.VERTICAL); sidebar.setVisibility(View.GONE);
-        frost = new Frost(dp(this, 28)); sidebar.setBackground(frost); sidebar.setPadding(dp(this, 10), dp(this, 14), dp(this, 10), dp(this, 16));
+        frost = new Frost(dp(this, 34)); frost.setGlass(0x8C6E7280); sidebar.setBackground(frost); sidebar.setPadding(dp(this, 12), dp(this, 16), dp(this, 12), dp(this, 18));
         sidebar.setElevation(dp(this, 12));
         // header: profile (opens the Nuvio account) and the clock
         LinearLayout head = new LinearLayout(this); head.setGravity(Gravity.CENTER_VERTICAL); head.setFocusable(true); head.setClickable(true);
-        head.setPadding(dp(this, 8), dp(this, 8), dp(this, 12), dp(this, 8));
-        avatar = text(this, "", 15, Color.WHITE, true); avatar.setGravity(Gravity.CENTER);
-        avatar.setBackground(round(0xFF6B5CFF, 18, this));
-        head.addView(avatar, new LinearLayout.LayoutParams(dp(this, 36), dp(this, 36)));
-        sideName = text(this, "", 15, Color.WHITE, false); sideName.setSingleLine(true); sideName.setPadding(dp(this, 10), 0, dp(this, 8), 0);
+        head.setPadding(dp(this, 8), dp(this, 8), dp(this, 14), dp(this, 8));
+        avatar = text(this, "", 18, Color.WHITE, true); avatar.setGravity(Gravity.CENTER);
+        avatar.setBackground(round(0xFF6B5CFF, 22, this));
+        head.addView(avatar, new LinearLayout.LayoutParams(dp(this, 44), dp(this, 44)));
+        sideName = text(this, "", 18, Color.WHITE, true); sideName.setSingleLine(true); sideName.setPadding(dp(this, 10), 0, dp(this, 8), 0);
         head.addView(sideName, new LinearLayout.LayoutParams(0, -2, 1));
-        sideClock = text(this, "", 14, 0xCCFFFFFF, false); head.addView(sideClock);
+        sideClock = text(this, "", 18, Color.WHITE, true); head.addView(sideClock);
         sideItems.add(head);
-        styleSide(head, null, new TextView[]{sideName, sideClock});
+        styleSide(head, null, null, new TextView[]{sideName, sideClock});
         head.setOnClickListener(v -> { if (nuvio.signedIn()) pickProfile(); else account(); });   // the profile opens "Who's watching?"
         sidebar.addView(head);
-        View gap = new View(this); sidebar.addView(gap, new LinearLayout.LayoutParams(1, dp(this, 12)));
+        View gap = new View(this); sidebar.addView(gap, new LinearLayout.LayoutParams(1, dp(this, 30)));   // Apple TV leaves air under the profile
         for (int i = 0; i < LABELS.length; i++) {
             LinearLayout it = new LinearLayout(this); it.setGravity(Gravity.CENTER_VERTICAL); it.setFocusable(true); it.setClickable(true);
-            it.setPadding(dp(this, 8), dp(this, 7), dp(this, 16), dp(this, 7));
-            FrameLayout circle = new FrameLayout(this); circle.setBackground(round(0x40000000, 17, this));
+            it.setPadding(dp(this, 7), dp(this, 7), dp(this, 18), dp(this, 7));
+            FrameLayout circle = new FrameLayout(this); circle.setBackground(round(0x33FFFFFF, 20, this));
             ImageView ic = new ImageView(this); ic.setImageResource(ICONS[i]); ic.setColorFilter(Color.WHITE);
-            circle.addView(ic, new FrameLayout.LayoutParams(dp(this, 18), dp(this, 18), Gravity.CENTER));
-            it.addView(circle, new LinearLayout.LayoutParams(dp(this, 34), dp(this, 34)));
-            TextView t = text(this, LABELS[i], 16, Color.WHITE, false); t.setPadding(dp(this, 12), 0, 0, 0); t.setSingleLine(true);
+            circle.addView(ic, new FrameLayout.LayoutParams(dp(this, 20), dp(this, 20), Gravity.CENTER));
+            it.addView(circle, new LinearLayout.LayoutParams(dp(this, 40), dp(this, 40)));
+            TextView t = text(this, LABELS[i], 18, Color.WHITE, true); t.setPadding(dp(this, 14), 0, 0, 0); t.setSingleLine(true);
             it.addView(t);
             sideItems.add(it);
-            styleSide(it, ic, new TextView[]{t});
+            styleSide(it, circle, ic, new TextView[]{t});
             final int idx = i;
             it.setOnClickListener(v -> onSide(idx));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2); lp.topMargin = dp(this, 3);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2); lp.topMargin = dp(this, 6);
             sidebar.addView(it, lp);
         }
-        FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(dp(this, 250), -2, Gravity.TOP | Gravity.START);
+        FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(dp(this, 290), -2, Gravity.TOP | Gravity.START);
         sp.leftMargin = dp(this, 22); sp.topMargin = dp(this, 22);
         root.addView(sidebar, sp);
     }
-    private void styleSide(View v, ImageView ic, TextView[] texts) {
+    private void styleSide(View v, View chip, ImageView ic, TextView[] texts) {
         v.setOnFocusChangeListener((x, f) -> {
-            x.setBackground(f ? round(0xFFF4F4F6, 24, this) : currentBg(x));
-            if (ic != null) ic.setColorFilter(f ? 0xFF121316 : Color.WHITE);
-            for (TextView t : texts) t.setTextColor(f ? 0xFF121316 : Color.WHITE);
+            x.setBackground(f ? round(0xFFF2F2F4, 28, this) : currentBg(x));
+            if (chip != null) chip.setBackground(round(f ? 0xFF16171B : 0x33FFFFFF, 20, this));
+            if (ic != null) ic.setColorFilter(Color.WHITE);
+            for (TextView t : texts) t.setTextColor(f ? 0xFF16171B : Color.WHITE);
+            x.animate().scaleX(f ? 1.04f : 1f).scaleY(f ? 1.04f : 1f).setDuration(140).start();
         });
     }
     private Drawable currentBg(View item) {
         int idx = sideItems.indexOf(item) - 1;   // 0 Catalog, 1 Applications
-        return idx == (showingApps ? 1 : 0) ? round(0x26FFFFFF, 24, this) : null;
+        return idx == (showingApps ? 1 : 0) ? round(0x40FFFFFF, 28, this) : null;
     }
     private boolean inSidebar(View v) { while (v != null) { if (v == sidebar) return true; ViewParent p = v.getParent(); v = p instanceof View ? (View) p : null; } return false; }
     private void openSidebar() {
