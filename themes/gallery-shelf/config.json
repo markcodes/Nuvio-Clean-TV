@@ -1,0 +1,23 @@
+{
+  "columns": 5,
+  "rows_below_dock": 1,
+  "background_color": "#05070C",
+  "wallpaper": true,
+  "wallpaper_rotation_minutes": 30,
+  "wallpaper_order": "shuffle",
+  "wallpaper_captions": true,
+  "wallpaper_dim": 15,
+  "clock_wallpaper": true,
+  "dock_title": true,
+  "dock_band": true,
+  "dock_glass": true,
+  "dock_opacity": 30,
+  "dock_even_padding": true,
+  "glass_style": "glass",
+  "ambient_glow": false,
+  "app_glow": true,
+  "show_greeting": false,
+  "date_below_clock": true,
+  "icon_only_buttons": true,
+  "icon_only_inputs": true
+}
