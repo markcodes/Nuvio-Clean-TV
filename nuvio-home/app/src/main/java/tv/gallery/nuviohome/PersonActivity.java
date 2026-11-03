@@ -48,17 +48,17 @@ public class PersonActivity extends Activity {
         root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFF2A2C33, 0xFF1A1B20, 0xFF141519}));
         scroll = new DetailActivity.Page(this); scroll.setVerticalScrollBarEnabled(false); scroll.setClipChildren(false); scroll.setClipToPadding(false);
         page = new LinearLayout(this); page.setOrientation(LinearLayout.VERTICAL); page.setClipChildren(false); page.setClipToPadding(false);
-        page.setPadding(0, dp(this, 40), 0, getResources().getDisplayMetrics().heightPixels / 2);
+        page.setPadding(0, dp(this, 36), 0, getResources().getDisplayMetrics().heightPixels / 2);
 
-        LinearLayout head = new LinearLayout(this); head.setGravity(Gravity.TOP); head.setPadding(PAD, 0, PAD, dp(this, 8));
+        LinearLayout head = new LinearLayout(this); head.setGravity(Gravity.TOP); head.setPadding(PAD, 0, PAD, 0);
         FrameLayout ph = new FrameLayout(this); ph.setBackground(round(0xFF4A505C, 12, this)); ph.setClipToOutline(true); Rows.shadow(ph);
         TextView ini = text(this, initials(name), 34, Color.WHITE, true); ini.setGravity(Gravity.CENTER); ph.addView(ini, new FrameLayout.LayoutParams(-1, -1));
         ImageView iv = new ImageView(this); iv.setScaleType(ImageView.ScaleType.CENTER_CROP); ph.addView(iv, new FrameLayout.LayoutParams(-1, -1));
-        head.addView(ph, new LinearLayout.LayoutParams(dp(this, 160), dp(this, 240)));
-        LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL); col.setPadding(dp(this, 28), 0, 0, 0);
-        TextView nm = text(this, name == null ? "" : name, 30, Color.WHITE, false); nm.setPadding(0, dp(this, 4), 0, 0); col.addView(nm);
-        sub = text(this, "", 14, 0xE6FFFFFF, false); sub.setLineSpacing(0, 1.35f); sub.setPadding(0, dp(this, 14), 0, 0); col.addView(sub);
-        bio = text(this, "", 13, 0xE6FFFFFF, false); bio.setMaxLines(6); bio.setEllipsize(android.text.TextUtils.TruncateAt.END); bio.setLineSpacing(0, 1.35f); bio.setPadding(0, dp(this, 14), 0, 0); col.addView(bio);
+        head.addView(ph, new LinearLayout.LayoutParams(dp(this, 128), dp(this, 192)));
+        LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL); col.setPadding(dp(this, 26), 0, 0, 0);
+        TextView nm = text(this, name == null ? "" : name, 26, Color.WHITE, false); nm.setPadding(0, dp(this, 2), 0, 0); col.addView(nm);
+        sub = text(this, "", 13, 0xE6FFFFFF, false); sub.setLineSpacing(0, 1.35f); sub.setPadding(0, dp(this, 10), 0, 0); col.addView(sub);
+        bio = text(this, "", 12, 0xE6FFFFFF, false); bio.setMaxLines(5); bio.setEllipsize(android.text.TextUtils.TruncateAt.END); bio.setLineSpacing(0, 1.35f); bio.setPadding(0, dp(this, 10), 0, 0); col.addView(bio);
         head.addView(col, new LinearLayout.LayoutParams(0, -2, 1));
         page.addView(head);
         status = text(this, "Loading…", 14, 0xB3FFFFFF, false); status.setPadding(PAD, dp(this, 30), PAD, 0); page.addView(status);
@@ -66,7 +66,7 @@ public class PersonActivity extends Activity {
         root.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
         setContentView(root);
         root.getViewTreeObserver().addOnGlobalFocusChangeListener((o, n) -> follow(n));
-        if (photo != null && !photo.isEmpty()) Images.load(iv, photo.replace("/w185/", "/h632/"), dp(this, 160), null);
+        if (photo != null && !photo.isEmpty()) Images.load(iv, photo.replace("/w185/", "/h632/"), dp(this, 128), null);
 
         new Thread(() -> {
             JSONObject p = Tmdb.person(this, id);
@@ -132,12 +132,12 @@ public class PersonActivity extends Activity {
     private void row(String name, List<JSONObject> items, boolean showJob) {
         if (items.isEmpty()) return;
         LinearLayout s = new LinearLayout(this); s.setOrientation(LinearLayout.VERTICAL); s.setClipChildren(false); s.setClipToPadding(false);
-        LinearLayout th = new LinearLayout(this); th.setGravity(Gravity.CENTER_VERTICAL); th.setPadding(PAD, dp(this, 22), PAD, 0);
+        LinearLayout th = new LinearLayout(this); th.setGravity(Gravity.CENTER_VERTICAL); th.setPadding(PAD, dp(this, 20), PAD, 0);
         th.addView(text(this, name, 18, Color.WHITE, false));
         TextView count = text(this, String.valueOf(Math.min(60, items.size())), 11, 0xCCFFFFFF, true); count.setBackground(round(0x33FFFFFF, 5, this)); count.setPadding(dp(this, 7), dp(this, 2), dp(this, 7), dp(this, 2));
         LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(-2, -2); cl.leftMargin = dp(this, 12); th.addView(count, cl);
         s.addView(th);
-        LinearLayout row = new LinearLayout(this); row.setClipChildren(false); row.setClipToPadding(false); row.setPadding(PAD, dp(this, 20), PAD, dp(this, 30));
+        LinearLayout row = new LinearLayout(this); row.setClipChildren(false); row.setClipToPadding(false); row.setPadding(PAD, dp(this, 26), PAD, dp(this, 30));
         DetailActivity.Strip hs = new DetailActivity.Strip(this); hs.setHorizontalScrollBarEnabled(false); hs.setClipChildren(false); hs.setClipToPadding(false); hs.addView(row);
         s.addView(hs); s.setTag(row);
         for (int i = 0; i < Math.min(60, items.size()); i++) {
@@ -156,19 +156,19 @@ public class PersonActivity extends Activity {
         page.addView(s, new LinearLayout.LayoutParams(-1, -2));
         sections.add(s);
     }
-    private LinearLayout.LayoutParams lp() { LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(-2, -2); l.rightMargin = dp(this, 16); return l; }
+    private LinearLayout.LayoutParams lp() { LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(-2, -2); l.rightMargin = dp(this, 18); return l; }
 
     private View card(String image, String caption, View.OnClickListener l) {
-        int w = dp(this, 140), h = dp(this, 210);
+        int w = dp(this, 120), h = dp(this, 180);
         LinearLayout card = new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL); card.setFocusable(true); card.setClickable(true); card.setClipChildren(false);
         FrameLayout art = new FrameLayout(this); art.setBackground(round(0xFF2A2C33, Rows.CORNER, this)); art.setClipToOutline(true); Rows.shadow(art);
         TextView fb = text(this, caption, 14, 0xB3FFFFFF, true); fb.setGravity(Gravity.CENTER); fb.setPadding(dp(this, 10), 0, dp(this, 10), 0); art.addView(fb, new FrameLayout.LayoutParams(-1, -1));
         ImageView iv = new ImageView(this); iv.setScaleType(ImageView.ScaleType.CENTER_CROP); art.addView(iv, new FrameLayout.LayoutParams(-1, -1));
         card.addView(art, new LinearLayout.LayoutParams(w, h));
-        TextView c = text(this, caption, 13, Color.WHITE, true); c.setSingleLine(true); c.setMaxWidth(w); c.setPadding(0, dp(this, 12), 0, 0);
+        TextView c = text(this, caption, 12, Color.WHITE, true); c.setSingleLine(true); c.setMaxWidth(w); c.setPadding(0, dp(this, 10), 0, 0);
         c.setEllipsize(android.text.TextUtils.TruncateAt.END); c.setTypeface(android.graphics.Typeface.DEFAULT); c.setGravity(Gravity.CENTER_HORIZONTAL);
         card.addView(c, new LinearLayout.LayoutParams(w, -2));
-        card.setOnFocusChangeListener((v, f) -> { Rows.lift(v, art, f); c.setTranslationY(f ? dp(this, 20) : 0); });
+        card.setOnFocusChangeListener((v, f) -> { Rows.lift(v, art, f); c.setTranslationY(f ? dp(this, 18) : 0); });
         card.setOnClickListener(l);
         if (image != null) Images.load(iv, image, w, null);
         return card;
