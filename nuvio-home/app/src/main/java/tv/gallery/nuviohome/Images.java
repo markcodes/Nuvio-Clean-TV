@@ -56,7 +56,8 @@ final class Images {
         Bitmap hit = MEM.get(key);
         if (hit != null) { show(v, hit); if (onLoaded != null) onLoaded.run(); return; }
         POOL.execute(() -> {
-            Bitmap b = fetch(url, Build.VERSION.SDK_INT >= 31 ? 320 : 64, true);
+            Bitmap raw = fetch(url, 96, true);
+            final Bitmap b = raw == null ? null : blur(raw, 4, 3);
             if (b == null) return;
             MEM.put(key, b);
             UI.post(() -> { if (url.equals(v.getTag(R_TAG))) { show(v, b); if (onLoaded != null) onLoaded.run(); } });
@@ -64,7 +65,7 @@ final class Images {
     }
     private static void show(ImageView v, Bitmap b) {
         v.setImageBitmap(b);
-        if (Build.VERSION.SDK_INT >= 31 && v.getTag(BLUR_TAG) == null) { v.setRenderEffect(RenderEffect.createBlurEffect(36f, 36f, Shader.TileMode.CLAMP)); v.setTag(BLUR_TAG, Boolean.TRUE); }
+        if (Build.VERSION.SDK_INT >= 31 && v.getTag(BLUR_TAG) == null) { v.setRenderEffect(RenderEffect.createBlurEffect(18f, 18f, Shader.TileMode.CLAMP)); v.setTag(BLUR_TAG, Boolean.TRUE); }
     }
 
     private static Bitmap fetch(String url, int widthPx, boolean small) {
@@ -81,7 +82,7 @@ final class Images {
             BitmapFactory.Options o = new BitmapFactory.Options(); o.inJustDecodeBounds = true;
             BitmapFactory.decodeByteArray(data, 0, data.length, o);
             int s = 1; while (o.outWidth / (s * 2) >= widthPx) s *= 2;
-            BitmapFactory.Options d = new BitmapFactory.Options(); d.inSampleSize = s; d.inPreferredConfig = Bitmap.Config.RGB_565;
+            BitmapFactory.Options d = new BitmapFactory.Options(); d.inSampleSize = s; d.inPreferredConfig = small ? Bitmap.Config.ARGB_8888 : Bitmap.Config.RGB_565;
             Bitmap b = BitmapFactory.decodeByteArray(data, 0, data.length, d);
             if (b != null && small && b.getWidth() > widthPx) {
                 Bitmap sc = Bitmap.createScaledBitmap(b, widthPx, Math.max(1, b.getHeight() * widthPx / b.getWidth()), true);
@@ -90,6 +91,29 @@ final class Images {
             return b;
         } catch (Throwable t) { return null; }
     }
+    /** Box blur, several passes approximate a gaussian; works on a small copy so it is cheap. */
+    static Bitmap blur(Bitmap src, int r, int passes) {
+        Bitmap b = src.isMutable() && src.getConfig() == Bitmap.Config.ARGB_8888 ? src : src.copy(Bitmap.Config.ARGB_8888, true);
+        int w = b.getWidth(), h = b.getHeight(); int[] px = new int[w * h], tmp = new int[w * h];
+        b.getPixels(px, 0, w, 0, 0, w, h);
+        for (int p = 0; p < passes; p++) { pass(px, tmp, w, h, r, true); pass(tmp, px, w, h, r, false); }
+        b.setPixels(px, 0, w, 0, 0, w, h);
+        return b;
+    }
+    private static void pass(int[] in, int[] out, int w, int h, int r, boolean horiz) {
+        int len = horiz ? w : h, lines = horiz ? h : w, div = 2 * r + 1;
+        for (int l = 0; l < lines; l++) {
+            int sa = 0, sr = 0, sg = 0, sb = 0;
+            for (int i = -r; i <= r; i++) { int c = in[idx(Math.max(0, Math.min(len - 1, i)), l, w, horiz)]; sa += c >>> 24; sr += (c >> 16) & 255; sg += (c >> 8) & 255; sb += c & 255; }
+            for (int i = 0; i < len; i++) {
+                out[idx(i, l, w, horiz)] = ((sa / div) << 24) | ((sr / div) << 16) | ((sg / div) << 8) | (sb / div);
+                int add = in[idx(Math.min(len - 1, i + r + 1), l, w, horiz)], rem = in[idx(Math.max(0, i - r), l, w, horiz)];
+                sa += (add >>> 24) - (rem >>> 24); sr += ((add >> 16) & 255) - ((rem >> 16) & 255); sg += ((add >> 8) & 255) - ((rem >> 8) & 255); sb += (add & 255) - (rem & 255);
+            }
+        }
+    }
+    private static int idx(int i, int l, int w, boolean horiz) { return horiz ? l * w + i : i * w + l; }
+
     private static File file(String url) { return new File(dir, Integer.toHexString(url.hashCode()) + "_" + url.length()); }
     private static byte[] disk(String url) {
         if (dir == null) return null; File f = file(url); if (!f.exists()) return null;

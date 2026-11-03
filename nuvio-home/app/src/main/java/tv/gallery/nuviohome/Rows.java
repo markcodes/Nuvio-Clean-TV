@@ -49,7 +49,7 @@ final class Rows {
             box.setLayoutParams(new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             TextView t = text(c, "", 17, 0xE6FFFFFF, true); t.setPadding(dp(c, 4), dp(c, 14), 0, dp(c, 2)); box.addView(t);
             RecyclerView r = new RecyclerView(c); r.setLayoutManager(new LinearLayoutManager(c, LinearLayoutManager.HORIZONTAL, false));
-            r.setRecycledViewPool(cardPool); r.setClipToPadding(false); r.setClipChildren(false); r.setPadding(dp(c, 4), dp(c, 12), dp(c, 48), dp(c, 12));
+            r.setRecycledViewPool(cardPool); r.setClipToPadding(false); r.setClipChildren(true); r.setPadding(dp(c, 14), dp(c, 14), dp(c, 48), dp(c, 14));
             r.setItemAnimator(null); r.setHasFixedSize(true);
             box.setClipChildren(false); box.addView(r, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             return new VH(box, t, r);
@@ -91,10 +91,10 @@ final class Rows {
                 v.animate().scaleX(f ? 1.08f : 1f).scaleY(f ? 1.08f : 1f).setDuration(140).start();
                 h.art.setForeground(f ? ring(c, 10) : null);
                 v.setZ(f ? 1 : 0);
-                if (f) { int pos = h.getBindingAdapterPosition(); if (pos < 0) return; rowFocused.run();
-                    if (row.isCollection()) l.onFolderFocused(row, row.folders.get(pos)); else l.onItemFocused(row, row.items.get(pos)); }
+                if (f) { int pos = h.getBindingAdapterPosition(); CardsAdapter a = (CardsAdapter) h.getBindingAdapter(); if (pos < 0 || a == null) return; a.rowFocused.run();
+                    if (a.row.isCollection()) a.l.onFolderFocused(a.row, a.row.folders.get(pos)); else a.l.onItemFocused(a.row, a.row.items.get(pos)); }
             });
-            card.setOnClickListener(v -> { int pos = h.getBindingAdapterPosition(); if (pos < 0) return; if (row.isCollection()) l.onFolder(row.folders.get(pos)); else l.onItem(row.items.get(pos)); });
+            card.setOnClickListener(v -> { int pos = h.getBindingAdapterPosition(); CardsAdapter a = (CardsAdapter) h.getBindingAdapter(); if (pos < 0 || a == null) return; if (a.row.isCollection()) a.l.onFolder(a.row.folders.get(pos)); else a.l.onItem(a.row.items.get(pos)); });
             return h;
         }
         @Override public void onBindViewHolder(VH h, int pos) {

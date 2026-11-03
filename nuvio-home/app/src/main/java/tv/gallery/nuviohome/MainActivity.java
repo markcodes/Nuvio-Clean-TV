@@ -66,6 +66,8 @@ public class MainActivity extends Activity implements Rows.Listener {
     private boolean sideOpen, showingApps, loading;
     private View lastContentFocus;
     private Runnable pendingHero;
+    private Frost frost;
+    private final Runnable recapture = () -> { if (frost != null) frost.capture((ViewGroup) sidebar.getParent(), sidebar, dp(this, 260)); };
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -101,7 +103,7 @@ public class MainActivity extends Activity implements Rows.Listener {
         root.addView(scrim, new FrameLayout.LayoutParams((int) (W * 0.6f), -1));
 
         // Catalog page
-        catalogPage = new LinearLayout(this); catalogPage.setOrientation(LinearLayout.VERTICAL); catalogPage.setClipChildren(false);
+        catalogPage = new LinearLayout(this); catalogPage.setOrientation(LinearLayout.VERTICAL);
         heroText = new LinearLayout(this); heroText.setOrientation(LinearLayout.VERTICAL);
         heroChip = text(this, "", 13, 0xD9FFFFFF, false);
         heroTitle = text(this, "", 34, Color.WHITE, true); heroTitle.setMaxLines(2); heroTitle.setPadding(0, dp(this, 6), 0, 0);
@@ -113,7 +115,7 @@ public class MainActivity extends Activity implements Rows.Listener {
         status = text(this, "", 16, 0xFFB3B3B3, false); status.setVisibility(View.GONE);
         catalogPage.addView(status);
         rowsList = new RecyclerView(this); rowsList.setLayoutManager(new LinearLayoutManager(this)); rowsList.setItemAnimator(null);
-        rowsList.setClipChildren(false); rowsList.setClipToPadding(false); rowsList.setPadding(0, 0, 0, (int) (H * 0.5f));
+        rowsList.setClipToPadding(false); rowsList.setPadding(0, 0, 0, (int) (H * 0.5f));
         rowsAdapter = new Rows.RowsAdapter(rows, this); rowsList.setAdapter(rowsAdapter);
         catalogPage.addView(rowsList, new LinearLayout.LayoutParams(-1, 0, 1));
         FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(-1, -1); cp.leftMargin = dp(this, 104); cp.topMargin = dp(this, 36);
@@ -146,7 +148,7 @@ public class MainActivity extends Activity implements Rows.Listener {
     private TextView[] sideLabels;
     private void buildSidebar(FrameLayout root) {
         sidebar = new LinearLayout(this); sidebar.setOrientation(LinearLayout.VERTICAL);
-        sidebar.setBackground(round(0xB314121A, 22, this)); sidebar.setPadding(dp(this, 8), dp(this, 18), dp(this, 8), dp(this, 18));
+        frost = new Frost(dp(this, 22)); sidebar.setBackground(frost); sidebar.setPadding(dp(this, 8), dp(this, 18), dp(this, 8), dp(this, 18));
         sidebar.setElevation(dp(this, 8));
         sideLabels = new TextView[LABELS.length];
         for (int i = 0; i < LABELS.length; i++) {
@@ -181,8 +183,9 @@ public class MainActivity extends Activity implements Rows.Listener {
         a.start();
         for (TextView t : sideLabels) t.setVisibility(open ? View.VISIBLE : View.GONE);
         for (int i = 0; i < sidebar.getChildCount(); i++) { View c = sidebar.getChildAt(i); if ("label".equals(c.getTag())) c.setVisibility(open ? View.VISIBLE : View.INVISIBLE); }
-        sidebar.setBackground(round(open ? 0xF214121A : 0xB314121A, 22, this));
-        (showingApps ? appsPage : catalogPage).animate().alpha(open ? 0.45f : 1f).setDuration(200).start();
+        recapture.run();
+        frost.setGlass(open ? 0x8C14121A : 0x5514121A);
+        (showingApps ? appsPage : catalogPage).animate().alpha(open ? 0.7f : 1f).setDuration(200).start();
     }
     private void onSide(int i) {
         switch (i) {
@@ -193,7 +196,9 @@ public class MainActivity extends Activity implements Rows.Listener {
             case 6: openNuvio(); break;
         }
     }
+    private void frostLater(long ms) { ui.removeCallbacks(recapture); ui.postDelayed(recapture, ms); }
     private void showPage(boolean apps) {
+        frostLater(400);
         showingApps = apps;
         catalogPage.setVisibility(apps ? View.GONE : View.VISIBLE); appsPage.setVisibility(apps ? View.VISIBLE : View.GONE);
         heroArt.setVisibility(apps ? View.GONE : View.VISIBLE); heroFade.setVisibility(apps ? View.GONE : View.VISIBLE);
@@ -241,6 +246,7 @@ public class MainActivity extends Activity implements Rows.Listener {
         rows.clear();
         if (h != null) rows.addAll(h.rows);
         rowsAdapter.notifyDataSetChanged();
+        frostLater(1200);
         if (!nuvio.signedIn()) { status("Sign in to Nuvio to fill your Home: sidebar › Nuvio account."); hero("Nuvio Clean TV", "", "Your Nuvio Home, Continue Watching and collections appear here once you sign in.", ""); }
         else if (rows.isEmpty()) status(loading ? "Loading your Nuvio Home…" : "Nothing to show yet.");
         else status(null);
@@ -291,6 +297,7 @@ public class MainActivity extends Activity implements Rows.Listener {
             Images.load(heroArt, img, (int) (getResources().getDisplayMetrics().widthPixels * 0.66f), null);
         };
         ui.postDelayed(pendingHero, 220);
+        frostLater(700);
     }
     private void hero(String title, String chip, String desc, String meta) {
         heroChip.setText(chip == null ? "" : chip); heroTitle.setText(title); heroMeta.setText(meta == null ? "" : meta); heroDesc.setText(desc);
