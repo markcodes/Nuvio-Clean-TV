@@ -77,6 +77,19 @@ public class DetailActivity extends Activity {
     private final List<View> sections = new ArrayList<>();
     private final TreeMap<Integer, List<JSONObject>> seasons = new TreeMap<>();
 
+    /**
+     * A sideways row that keeps a margin around the focused card when scrolling to it, so the zoomed card (and its
+     * shadow) is never cut by the screen edge.
+     */
+    static final class Strip extends HorizontalScrollView {
+        Strip(Context c) { super(c); }
+        @Override protected int computeScrollDeltaToGetChildRectOnScreen(Rect r) {
+            int m = dp(getContext(), 72);
+            Rect wide = new Rect(r.left - m, r.top, r.right + m, r.bottom);
+            return super.computeScrollDeltaToGetChildRectOnScreen(wide);
+        }
+    }
+
     /** Scrolls only where we tell it to: each row snaps under the top, like Home. */
     static final class Page extends ScrollView {
         Page(Context c) { super(c); }
@@ -113,7 +126,7 @@ public class DetailActivity extends Activity {
         reviewsSec = section("Reviews");
         companiesSec = section("Production Companies");
         seasonsRow = new LinearLayout(this); seasonsRow.setPadding(PAD, dp(this, 12), PAD, 0);
-        HorizontalScrollView hs = new HorizontalScrollView(this); hs.setHorizontalScrollBarEnabled(false); hs.addView(seasonsRow);
+        HorizontalScrollView hs = new Strip(this); hs.setHorizontalScrollBarEnabled(false); hs.addView(seasonsRow);
         episodesSec.addView(hs, 1);
         scroll.addView(page);
         root.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
@@ -195,7 +208,7 @@ public class DetailActivity extends Activity {
         LinearLayout s = new LinearLayout(this); s.setOrientation(LinearLayout.VERTICAL); s.setClipChildren(false); s.setClipToPadding(false); s.setVisibility(View.GONE);
         TextView t = text(this, name, 18, Color.WHITE, true); t.setPadding(PAD, dp(this, 22), PAD, 0); s.addView(t);
         LinearLayout row = new LinearLayout(this); row.setClipChildren(false); row.setClipToPadding(false); row.setPadding(PAD, dp(this, 18), PAD, dp(this, 24));
-        HorizontalScrollView hs = new HorizontalScrollView(this); hs.setHorizontalScrollBarEnabled(false); hs.setClipChildren(false); hs.setClipToPadding(false); hs.addView(row);
+        HorizontalScrollView hs = new Strip(this); hs.setHorizontalScrollBarEnabled(false); hs.setClipChildren(false); hs.setClipToPadding(false); hs.addView(row);
         s.addView(hs); s.setTag(row);
         page.addView(s, new LinearLayout.LayoutParams(-1, -2));
         sections.add(s);

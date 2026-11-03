@@ -138,7 +138,7 @@ public class PersonActivity extends Activity {
         LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(-2, -2); cl.leftMargin = dp(this, 12); th.addView(count, cl);
         s.addView(th);
         LinearLayout row = new LinearLayout(this); row.setClipChildren(false); row.setClipToPadding(false); row.setPadding(PAD, dp(this, 20), PAD, dp(this, 30));
-        HorizontalScrollView hs = new HorizontalScrollView(this); hs.setHorizontalScrollBarEnabled(false); hs.setClipChildren(false); hs.setClipToPadding(false); hs.addView(row);
+        DetailActivity.Strip hs = new DetailActivity.Strip(this); hs.setHorizontalScrollBarEnabled(false); hs.setClipChildren(false); hs.setClipToPadding(false); hs.addView(row);
         s.addView(hs); s.setTag(row);
         for (int i = 0; i < Math.min(60, items.size()); i++) {
             JSONObject c = items.get(i);
