@@ -188,7 +188,7 @@ public class DetailActivity extends Activity {
         for (JSONObject v : eps) {
             int ep = v.optInt("episode", v.optInt("number"));
             LinearLayout card = new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL); card.setFocusable(true); card.setClickable(true);
-            FrameLayout art = new FrameLayout(this); art.setBackground(round(0xFF22232A, 10, this)); art.setClipToOutline(true);
+            FrameLayout art = new FrameLayout(this); art.setBackground(round(0xFF22232A, Rows.CORNER, this)); art.setClipToOutline(true);
             ImageView iv = new ImageView(this); iv.setScaleType(ImageView.ScaleType.CENTER_CROP); art.addView(iv, new FrameLayout.LayoutParams(-1, -1));
             TextView tag = text(this, "E" + ep, 12, Color.WHITE, true); tag.setBackground(round(0xBF000000, 6, this)); tag.setPadding(dp(this, 8), dp(this, 3), dp(this, 8), dp(this, 3));
             FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.START); tp.setMargins(dp(this, 8), 0, 0, dp(this, 8)); art.addView(tag, tp);
@@ -196,7 +196,7 @@ public class DetailActivity extends Activity {
             String raw = Nuvio.nonEmpty(v.optString("name"), v.optString("title"));
             final String name = raw.isEmpty() ? "Episode " + ep : raw;
             TextView t = text(this, name, 13, Color.WHITE, false); t.setSingleLine(true); t.setMaxWidth(w); t.setPadding(0, dp(this, 8), 0, 0); card.addView(t);
-            card.setOnFocusChangeListener((vw, f) -> { vw.animate().scaleX(f ? 1.06f : 1f).scaleY(f ? 1.06f : 1f).setDuration(120).start(); art.setForeground(f ? Rows.ring(this, 10) : null); });
+            card.setOnFocusChangeListener((vw, f) -> Rows.lift(vw, art, f));
             card.setOnClickListener(vw -> play(v.optString("id"), season, ep, name));
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2); lp.rightMargin = dp(this, 16);
             episodesRow.addView(card, lp);

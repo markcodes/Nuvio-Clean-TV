@@ -32,6 +32,14 @@ final class Rows {
 
     static int dp(Context c, float v) { return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, c.getResources().getDisplayMetrics()); }
     static GradientDrawable round(int color, float r, Context c) { GradientDrawable g = new GradientDrawable(); g.setColor(color); g.setCornerRadius(dp(c, r)); return g; }
+    static final float CORNER = 7f, ZOOM = 1.12f;
+    /** Apple TV-style focus: the card zooms in and lifts on a soft shadow; no ring. */
+    static void lift(View card, View art, boolean f) {
+        card.animate().scaleX(f ? ZOOM : 1f).scaleY(f ? ZOOM : 1f).translationZ(f ? dp(card.getContext(), 12) : 0).setDuration(160)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+        art.setElevation(f ? dp(card.getContext(), 10) : 0);
+        card.setZ(f ? 1 : 0);
+    }
     static GradientDrawable ring(Context c, float r) { GradientDrawable g = new GradientDrawable(); g.setCornerRadius(dp(c, r)); g.setStroke(dp(c, 3), Color.WHITE); g.setColor(Color.TRANSPARENT); return g; }
     static TextView text(Context c, String s, float sp, int color, boolean bold) {
         TextView t = new TextView(c); t.setText(s); t.setTextSize(sp); t.setTextColor(color); t.setIncludeFontPadding(false);
@@ -76,7 +84,7 @@ final class Rows {
             LinearLayout card = new LinearLayout(c); card.setOrientation(LinearLayout.VERTICAL); card.setFocusable(true); card.setClickable(true);
             card.setClipChildren(false);
             VH h = new VH(card);
-            h.art = new FrameLayout(c); h.art.setBackground(round(0xFF22232A, 10, c)); h.art.setClipToOutline(true);
+            h.art = new FrameLayout(c); h.art.setBackground(round(0xFF22232A, CORNER, c)); h.art.setClipToOutline(true);
             h.img = new ImageView(c); h.img.setScaleType(ImageView.ScaleType.CENTER_CROP);
             h.art.addView(h.img, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             h.fallback = text(c, "", 14, 0xFFB3B3B3, false); h.fallback.setGravity(Gravity.CENTER); h.fallback.setPadding(dp(c, 8), 0, dp(c, 8), 0);
@@ -93,7 +101,7 @@ final class Rows {
             FrameLayout.LayoutParams bl = new FrameLayout.LayoutParams(0, dp(c, 4), Gravity.BOTTOM | Gravity.START); bl.setMargins(dp(c, 10), 0, 0, dp(c, 10));
             h.art.addView(h.bar, bl);
             // The focus ring sits around the picture (in this frame's padding), not on top of it.
-            h.frame = new FrameLayout(c); h.frame.setPadding(dp(c, 5), dp(c, 5), dp(c, 5), dp(c, 5));
+            h.frame = new FrameLayout(c); h.frame.setPadding(dp(c, 2), dp(c, 2), dp(c, 2), dp(c, 2));
             h.frame.addView(h.art, new FrameLayout.LayoutParams(dp(c, 120), dp(c, 180)));
             card.addView(h.frame);
             h.title = text(c, "", 13, Color.WHITE, false); h.title.setSingleLine(true); h.title.setPadding(dp(c, 5), dp(c, 6), 0, 0); card.addView(h.title);
@@ -101,8 +109,7 @@ final class Rows {
             RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             lp.rightMargin = dp(c, 16); card.setLayoutParams(lp);
             card.setOnFocusChangeListener((v, f) -> {
-                v.animate().scaleX(f ? 1.08f : 1f).scaleY(f ? 1.08f : 1f).setDuration(140).start();
-                h.frame.setBackground(f ? ring(c, 14) : null);
+                lift(v, h.art, f);
                 if (h.title.getText().length() > 0) h.title.setVisibility(f ? View.VISIBLE : View.INVISIBLE);
                 v.setZ(f ? 1 : 0);
                 if (f) { int pos = h.getBindingAdapterPosition(); CardsAdapter a = (CardsAdapter) h.getBindingAdapter(); if (pos < 0 || a == null) return; a.rowFocused.run();
