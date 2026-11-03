@@ -53,15 +53,15 @@ final class Nuvio {
 
     // ---------- model ----------
     static final class Item {
-        String type, id, name, poster, background, description, year, sub; int pct = -1;
+        String type, id, name, poster, background, description, year, sub, videoId; int pct = -1, season = -1, episode = -1;
         JSONObject toJson() throws Exception {
             return new JSONObject().put("type", type).put("id", id).put("name", name).put("poster", poster).put("background", background)
-                    .put("description", description).put("year", year).put("sub", sub).put("pct", pct);
+                    .put("description", description).put("year", year).put("sub", sub).put("pct", pct).put("videoId", videoId).put("season", season).put("episode", episode);
         }
         static Item from(JSONObject j) {
             Item i = new Item(); i.type = j.optString("type"); i.id = j.optString("id"); i.name = j.optString("name");
             i.poster = j.optString("poster"); i.background = j.optString("background"); i.description = j.optString("description");
-            i.year = j.optString("year"); i.sub = j.optString("sub"); i.pct = j.optInt("pct", -1); return i;
+            i.year = j.optString("year"); i.sub = j.optString("sub"); i.pct = j.optInt("pct", -1); i.videoId = j.optString("videoId", null); i.season = j.optInt("season", -1); i.episode = j.optInt("episode", -1); return i;
         }
         static Item fromMeta(JSONObject m, String fallbackType) {
             Item i = new Item(); i.type = norm(m.optString("type", fallbackType)); i.id = m.optString("id"); i.name = m.optString("name");
@@ -181,7 +181,8 @@ final class Nuvio {
         for (Addon ad : addons) {
             JSONArray slim = new JSONArray(), cs = ad.manifest.optJSONArray("catalogs");
             if (cs != null) for (int i = 0; i < cs.length(); i++) { JSONObject c = cs.getJSONObject(i); slim.put(new JSONObject().put("id", c.optString("id")).put("type", c.optString("type")).put("name", c.optString("name"))); }
-            h.addons.put(new JSONObject().put("id", ad.id).put("name", ad.name).put("base", ad.base).put("catalogs", slim));
+            h.addons.put(new JSONObject().put("id", ad.id).put("name", ad.name).put("base", ad.base).put("catalogs", slim)
+                    .put("resources", ad.manifest.optJSONArray("resources")).put("types", ad.manifest.optJSONArray("types")).put("idPrefixes", ad.manifest.optJSONArray("idPrefixes")));
         }
 
         // Continue Watching
@@ -244,6 +245,7 @@ final class Nuvio {
             long pos = p.optLong("position"), dur = p.optLong("duration");
             it.pct = dur > 0 ? (int) (pos * 100 / dur) : -1;
             String ep = p.isNull("season") ? "" : "S" + p.optInt("season") + " E" + p.optInt("episode");
+            it.videoId = p.optString("video_id", null); if (!p.isNull("season")) { it.season = p.optInt("season"); it.episode = p.optInt("episode"); }
             String left = dur > 0 ? Math.max(1, (dur - pos) / 60000) + " min left" : "";
             it.sub = ep.isEmpty() ? left : (left.isEmpty() ? ep : ep + " · " + left);
             return it;
@@ -268,11 +270,11 @@ final class Nuvio {
     }
     static Addon addonFrom(JSONObject j) {
         Addon a = new Addon(); a.id = j.optString("id"); a.name = j.optString("name"); a.base = j.optString("base");
-        try { a.manifest = new JSONObject().put("catalogs", j.optJSONArray("catalogs")); } catch (Exception e) { a.manifest = new JSONObject(); }
+        try { a.manifest = new JSONObject().put("catalogs", j.optJSONArray("catalogs")).put("resources", j.optJSONArray("resources")).put("types", j.optJSONArray("types")).put("idPrefixes", j.optJSONArray("idPrefixes")); } catch (Exception e) { a.manifest = new JSONObject(); }
         return a;
     }
 
-    private JSONObject findMeta(List<Addon> addons, String type, String id) {
+    JSONObject findMeta(List<Addon> addons, String type, String id) {
         for (Addon ad : addons) {
             if (!supports(ad.manifest, "meta", type, id)) continue;
             try { Resp r = get(addonUrl(ad.base, "/meta/" + enc(type) + "/" + enc(id) + ".json")); if (r.code == 200) { JSONObject m = new JSONObject(r.body).optJSONObject("meta"); if (m != null && m.has("name")) return m; } }

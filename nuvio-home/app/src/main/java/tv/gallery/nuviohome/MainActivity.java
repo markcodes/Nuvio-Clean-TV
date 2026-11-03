@@ -305,9 +305,7 @@ public class MainActivity extends Activity implements Rows.Listener {
     }
 
     @Override public void onItem(Nuvio.Item it) {
-        Uri link = Uri.parse("nuvio://detail/" + Nuvio.norm(it.type) + "/" + Uri.encode(it.id, ":"));
-        try { startActivity(new Intent(Intent.ACTION_VIEW, link).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
-        catch (ActivityNotFoundException e) { Toast.makeText(this, "Nuvio isn't installed.", Toast.LENGTH_LONG).show(); }
+        try { startActivity(new Intent(this, DetailActivity.class).putExtra("item", it.toJson().toString())); } catch (Exception ignored) { }
     }
     @Override public void onFolder(JSONObject f) {
         startActivity(new Intent(this, FolderActivity.class).putExtra("folder", f.toString()));
