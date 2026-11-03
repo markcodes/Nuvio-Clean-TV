@@ -35,8 +35,8 @@ public class FolderActivity extends Activity implements Rows.Listener {
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
-        JSONObject folder; JSONArray addonsJson;
-        try { folder = new JSONObject(getIntent().getStringExtra("folder")); addonsJson = new JSONArray(getIntent().getStringExtra("addons")); }
+        JSONObject folder;
+        try { folder = new JSONObject(getIntent().getStringExtra("folder")); }
         catch (Exception e) { finish(); return; }
         FrameLayout root = new FrameLayout(this); root.setBackgroundColor(0xFF0B0C10);
         backdrop = new ImageView(this); backdrop.setScaleType(ImageView.ScaleType.CENTER_CROP); backdrop.setAlpha(0.5f);
@@ -60,6 +60,8 @@ public class FolderActivity extends Activity implements Rows.Listener {
         final JSONArray sources = srcs == null ? new JSONArray() : srcs;
         Nuvio nuvio = new Nuvio(this);
         new Thread(() -> {
+            Nuvio.Home saved = nuvio.cached();
+            JSONArray addonsJson = saved == null || saved.addons == null ? new JSONArray() : saved.addons;
             List<Nuvio.Addon> addons = new ArrayList<>();
             for (int i = 0; i < addonsJson.length(); i++) addons.add(Nuvio.addonFrom(addonsJson.optJSONObject(i)));
             int skipped = 0;
@@ -86,7 +88,7 @@ public class FolderActivity extends Activity implements Rows.Listener {
     @Override public void onRowFocused(int rowIndex, View rowView) { if (rowView.getTop() != 0) list.smoothScrollBy(0, rowView.getTop()); }
     @Override public void onItem(Nuvio.Item it) {
         Uri link = Uri.parse("nuvio://detail/" + Nuvio.norm(it.type) + "/" + Uri.encode(it.id, ":"));
-        try { startActivity(new Intent(Intent.ACTION_VIEW, link)); } catch (ActivityNotFoundException e) { Toast.makeText(this, "Nuvio isn't installed.", Toast.LENGTH_LONG).show(); }
+        try { startActivity(new Intent(Intent.ACTION_VIEW, link).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (ActivityNotFoundException e) { Toast.makeText(this, "Nuvio isn't installed.", Toast.LENGTH_LONG).show(); }
     }
     @Override public void onFolder(JSONObject folder) { }
 }

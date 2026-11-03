@@ -70,11 +70,13 @@ public class MainActivity extends Activity implements Rows.Listener {
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         Images.init(this);
+        Crash.install(this);
         nuvio = new Nuvio(this);
         buildUi();
         showHome(nuvio.cached());
         refresh(false);
         tick();
+        Crash.showLast(this);
     }
     @Override protected void onResume() { super.onResume(); if (nuvio.signedIn() && rows.isEmpty() && !loading) refresh(false); }
     @Override protected void onNewIntent(Intent i) { super.onNewIntent(i); showPage(false); focusContent(); }   // Home button
@@ -297,12 +299,11 @@ public class MainActivity extends Activity implements Rows.Listener {
 
     @Override public void onItem(Nuvio.Item it) {
         Uri link = Uri.parse("nuvio://detail/" + Nuvio.norm(it.type) + "/" + Uri.encode(it.id, ":"));
-        try { startActivity(new Intent(Intent.ACTION_VIEW, link)); }
+        try { startActivity(new Intent(Intent.ACTION_VIEW, link).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
         catch (ActivityNotFoundException e) { Toast.makeText(this, "Nuvio isn't installed.", Toast.LENGTH_LONG).show(); }
     }
     @Override public void onFolder(JSONObject f) {
-        Nuvio.Home h = nuvio.cached();
-        startActivity(new Intent(this, FolderActivity.class).putExtra("folder", f.toString()).putExtra("addons", h == null ? "[]" : h.addons.toString()));
+        startActivity(new Intent(this, FolderActivity.class).putExtra("folder", f.toString()));
     }
 
     // ---------- Nuvio ----------

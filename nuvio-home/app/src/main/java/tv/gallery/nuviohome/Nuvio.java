@@ -178,7 +178,11 @@ final class Nuvio {
         log.append("addons ").append(addons.size()).append('\n');
 
         Home h = new Home(); h.loadedAt = System.currentTimeMillis();
-        for (Addon ad : addons) h.addons.put(new JSONObject().put("id", ad.id).put("name", ad.name).put("base", ad.base).put("catalogs", ad.manifest.optJSONArray("catalogs")));
+        for (Addon ad : addons) {
+            JSONArray slim = new JSONArray(), cs = ad.manifest.optJSONArray("catalogs");
+            if (cs != null) for (int i = 0; i < cs.length(); i++) { JSONObject c = cs.getJSONObject(i); slim.put(new JSONObject().put("id", c.optString("id")).put("type", c.optString("type")).put("name", c.optString("name"))); }
+            h.addons.put(new JSONObject().put("id", ad.id).put("name", ad.name).put("base", ad.base).put("catalogs", slim));
+        }
 
         // Continue Watching
         Future<Row> cw = pool.submit(() -> continueWatching(idx, addons));
