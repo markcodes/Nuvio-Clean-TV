@@ -76,6 +76,10 @@ public class MainActivity extends Activity implements Rows.Listener {
         nuvio = new Nuvio(this);
         buildUi();
         showHome(nuvio.cached());
+        if (nuvio.signedIn() && nuvio.profileLocked()) {      // a locked profile asks for its PIN when the launcher starts
+            catalogPage.setVisibility(View.INVISIBLE);
+            ui.post(() -> Pin.ask(this, nuvio.profile(), nuvio.profileName(), this::unlock, this::pickProfile));
+        }
         refresh(false);
         tick();
         Crash.showLast(this);
@@ -184,7 +188,7 @@ public class MainActivity extends Activity implements Rows.Listener {
         for (TextView t : sideLabels) t.setVisibility(open ? View.VISIBLE : View.GONE);
         for (int i = 0; i < sidebar.getChildCount(); i++) { View c = sidebar.getChildAt(i); if ("label".equals(c.getTag())) c.setVisibility(open ? View.VISIBLE : View.INVISIBLE); }
         recapture.run();
-        frost.setGlass(open ? 0x8C14121A : 0x5514121A);
+        frost.setGlass(open ? 0x7314121A : 0x4014121A);
         (showingApps ? appsPage : catalogPage).animate().alpha(open ? 0.7f : 1f).setDuration(200).start();
     }
     private void onSide(int i) {
@@ -331,6 +335,7 @@ public class MainActivity extends Activity implements Rows.Listener {
                 .setNegativeButton("Sign out", (d, w) -> { bg.execute(() -> { nuvio.signOut(); ui.post(() -> { lastContentFocus = null; showHome(null); }); }); })
                 .show();
     }
+    private void unlock() { if (!showingApps) catalogPage.setVisibility(View.VISIBLE); focusContent(); }
     private void pickProfile() {
         bg.execute(() -> {
             try {
@@ -338,9 +343,9 @@ public class MainActivity extends Activity implements Rows.Listener {
                 List<String> names = new ArrayList<>(), labels = new ArrayList<>(); List<Integer> idx = new ArrayList<>(); List<Boolean> locked = new ArrayList<>();
                 for (int i = 0; i < ps.length(); i++) { JSONObject p = ps.getJSONObject(i); names.add(p.optString("name")); locked.add(p.optBoolean("pin_enabled")); labels.add(p.optString("name") + (p.optBoolean("pin_enabled") ? "  🔒" : "")); idx.add(p.optInt("profile_index")); }
                 ui.post(() -> new AlertDialog.Builder(this).setTitle("Who's watching?").setItems(labels.toArray(new String[0]), (d, w) -> {
-                    Runnable go = () -> { nuvio.setProfile(idx.get(w), names.get(w)); lastContentFocus = null; showHome(nuvio.cached()); refresh(true); };
-                    if (locked.get(w) && idx.get(w) != nuvio.profile()) Pin.ask(this, idx.get(w), names.get(w), go); else go.run();
-                }).show());
+                    Runnable go = () -> { nuvio.setProfile(idx.get(w), names.get(w), locked.get(w)); lastContentFocus = null; unlock(); showHome(nuvio.cached()); refresh(true); };
+                    if (locked.get(w)) Pin.ask(this, idx.get(w), names.get(w), go, this::pickProfile); else go.run();
+                }).setCancelable(!nuvio.profileName().isEmpty() && !(nuvio.profileLocked() && catalogPage.getVisibility() != View.VISIBLE)).show());
             } catch (Exception e) { ui.post(() -> Toast.makeText(this, "Couldn't load profiles: " + e.getMessage(), Toast.LENGTH_LONG).show()); }
         });
     }

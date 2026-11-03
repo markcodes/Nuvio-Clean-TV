@@ -30,9 +30,9 @@ public class SignInActivity extends Activity {
         page.addView(note);
         EditText email = new EditText(this); email.setHint("Email"); email.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
         EditText pass = new EditText(this); pass.setHint("Password"); pass.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        pass.setTransformationMethod(PasswordTransformationMethod.getInstance());   // dots, whatever the TV keyboard does
         email.setImeOptions(EditorInfo.IME_ACTION_NEXT); pass.setImeOptions(EditorInfo.IME_ACTION_DONE);
         for (EditText e : new EditText[]{email, pass}) { e.setTextColor(Color.WHITE); e.setHintTextColor(0xFF808080); e.setSingleLine(true); page.addView(e, new LinearLayout.LayoutParams(dp(this, 460), -2)); }
+        pass.setTransformationMethod(PasswordTransformationMethod.getInstance());   // after setSingleLine, which would replace it
         TextView err = text(this, "", 14, 0xFFF2A3A3, false); err.setPadding(0, dp(this, 12), 0, 0);
         Button go = new Button(this); go.setText("Sign in"); go.setAllCaps(false); go.setTextColor(0xFF121316); go.setBackground(round(0xFFF4F4F6, 24, this));
         go.setPadding(dp(this, 28), dp(this, 10), dp(this, 28), dp(this, 10));

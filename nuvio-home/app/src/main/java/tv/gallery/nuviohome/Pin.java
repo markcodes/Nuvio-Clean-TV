@@ -20,40 +20,42 @@ import java.security.SecureRandom;
 final class Pin {
     private static SharedPreferences prefs(Context c) { return c.getSharedPreferences("pins", Context.MODE_PRIVATE); }
 
-    static void ask(Activity a, int profile, String name, Runnable onOk) {
+    static void ask(Activity a, int profile, String name, Runnable onOk, Runnable onCancel) {
         String stored = prefs(a).getString("p" + profile, null);
-        if (stored == null) set(a, profile, name, onOk, null);
+        if (stored == null) set(a, profile, name, onOk, onCancel, null);
         else prompt(a, name + "'s PIN", "Enter the PIN for " + name + " on this TV.", pin -> {
             if (hash(prefs(a).getString("s" + profile, ""), pin).equals(stored)) onOk.run();
-            else Toast.makeText(a, "Wrong PIN.", Toast.LENGTH_SHORT).show();
-        });
+            else { Toast.makeText(a, "Wrong PIN.", Toast.LENGTH_SHORT).show(); ask(a, profile, name, onOk, onCancel); }
+        }, onCancel);
     }
 
-    private static void set(Activity a, int profile, String name, Runnable onOk, String first) {
+    private static void set(Activity a, int profile, String name, Runnable onOk, Runnable onCancel, String first) {
         if (first == null) {
             prompt(a, "Set a PIN for " + name, name + " has a PIN in Nuvio. Nuvio doesn't let other apps check that PIN, so choose a PIN for " + name + " on this TV (4 to 8 digits). You can use the same one.", pin -> {
-                if (pin.length() < 4) { Toast.makeText(a, "Use at least 4 digits.", Toast.LENGTH_SHORT).show(); return; }
-                set(a, profile, name, onOk, pin);
-            });
+                if (pin.length() < 4) { Toast.makeText(a, "Use at least 4 digits.", Toast.LENGTH_SHORT).show(); set(a, profile, name, onOk, onCancel, null); return; }
+                set(a, profile, name, onOk, onCancel, pin);
+            }, onCancel);
         } else {
             prompt(a, "Confirm the PIN", "Enter the same PIN again.", pin -> {
-                if (!pin.equals(first)) { Toast.makeText(a, "The PINs didn't match. Try again.", Toast.LENGTH_SHORT).show(); return; }
+                if (!pin.equals(first)) { Toast.makeText(a, "The PINs didn't match. Try again.", Toast.LENGTH_SHORT).show(); set(a, profile, name, onOk, onCancel, null); return; }
                 byte[] s = new byte[16]; new SecureRandom().nextBytes(s); String salt = hex(s);
                 prefs(a).edit().putString("s" + profile, salt).putString("p" + profile, hash(salt, pin)).apply();
                 onOk.run();
-            });
+            }, onCancel);
         }
     }
 
     interface Got { void pin(String p); }
-    private static void prompt(Activity a, String title, String msg, Got got) {
+    private static void prompt(Activity a, String title, String msg, Got got, Runnable onCancel) {
         EditText e = new EditText(a);
         e.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
         e.setTransformationMethod(PasswordTransformationMethod.getInstance());
         e.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(8)});
         new AlertDialog.Builder(a).setTitle(title).setMessage(msg).setView(e)
                 .setPositiveButton("OK", (d, w) -> got.pin(e.getText().toString().trim()))
-                .setNegativeButton("Cancel", null).show();
+                .setNegativeButton("Cancel", (d, w) -> { if (onCancel != null) onCancel.run(); })
+                .setOnCancelListener(d -> { if (onCancel != null) onCancel.run(); })
+                .setCancelable(onCancel == null).show();
         e.requestFocus();
     }
 

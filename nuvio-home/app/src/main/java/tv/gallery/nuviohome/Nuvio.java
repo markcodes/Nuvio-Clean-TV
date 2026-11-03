@@ -49,7 +49,8 @@ final class Nuvio {
     String email() { return prefs.getString("email", ""); }
     int profile() { return prefs.getInt("profile", 1); }
     String profileName() { return prefs.getString("profileName", ""); }
-    void setProfile(int idx, String name) { prefs.edit().putInt("profile", idx).putString("profileName", name).apply(); }
+    void setProfile(int idx, String name, boolean locked) { prefs.edit().putInt("profile", idx).putString("profileName", name).putBoolean("profileLocked", locked).apply(); }
+    boolean profileLocked() { return prefs.getBoolean("profileLocked", false); }
 
     // ---------- model ----------
     static final class Item {

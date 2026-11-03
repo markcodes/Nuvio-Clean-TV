@@ -41,7 +41,7 @@ final class Frost extends Drawable {
             try { v.draw(c); } catch (RuntimeException ignored) { }
             c.restoreToCount(save);
         }
-        bm = Images.blur(b, 6, 3); top = panel.getTop();
+        bm = Images.blur(b, 3, 2); top = panel.getTop();
         invalidateSelf();
     }
 
