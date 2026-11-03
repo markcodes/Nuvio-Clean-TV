@@ -54,7 +54,7 @@ public class FolderActivity extends Activity implements Rows.Listener {
         page.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
         root.addView(page, new FrameLayout.LayoutParams(-1, -1));
         setContentView(root);
-        if (!folder.isNull("coverImageUrl")) Images.loadBlurred(backdrop, folder.optString("coverImageUrl"), null);
+        { String hb = folder.isNull("heroBackdropUrl") ? "" : folder.optString("heroBackdropUrl", ""); if (hb.isEmpty() && !folder.isNull("coverImageUrl")) hb = folder.optString("coverImageUrl"); if (!hb.isEmpty()) Images.loadBlurred(backdrop, hb, null); }
 
         JSONArray srcs = folder.optJSONArray("sources"); if (srcs == null || srcs.length() == 0) srcs = folder.optJSONArray("catalogSources");
         final JSONArray sources = srcs == null ? new JSONArray() : srcs;

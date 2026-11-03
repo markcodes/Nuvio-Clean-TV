@@ -49,9 +49,17 @@ public class SignInActivity extends Activity {
         LinearLayout.LayoutParams gp = new LinearLayout.LayoutParams(-2, -2); gp.topMargin = dp(this, 20);
         page.addView(go, gp); page.addView(err);
         // The keyboard's ✓ signs in, so the button can't be hidden behind the keyboard.
-        pass.setOnEditorActionListener((v, id, ev) -> { if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_ACTION_GO) { go.performClick(); return true; } return false; });
+        // TV keyboards differ in what their ✓ / →| key sends: treat any editor action or Enter as "next" / "sign in".
+        email.setOnEditorActionListener((v, id, ev) -> { pass.requestFocus(); return true; });
+        pass.setOnEditorActionListener((v, id, ev) -> { if (ev != null && ev.getAction() != android.view.KeyEvent.ACTION_DOWN) return true; hideKeyboard(pass); go.requestFocus(); go.performClick(); return true; });
+        email.setOnKeyListener((v, k, ev) -> { if (ev.getAction() == android.view.KeyEvent.ACTION_UP && (k == android.view.KeyEvent.KEYCODE_ENTER || k == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER)) { pass.requestFocus(); return true; } return false; });
+        pass.setOnKeyListener((v, k, ev) -> { if (ev.getAction() == android.view.KeyEvent.ACTION_UP && (k == android.view.KeyEvent.KEYCODE_ENTER || k == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER)) { hideKeyboard(pass); go.requestFocus(); go.performClick(); return true; } return false; });
         ScrollView sv = new ScrollView(this); sv.setBackgroundColor(0xFF0B0C10); sv.setFillViewport(true); sv.addView(page);
         setContentView(sv);
         email.requestFocus();
+    }
+    private void hideKeyboard(android.view.View v) {
+        android.view.inputmethod.InputMethodManager im = (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+        if (im != null) im.hideSoftInputFromWindow(v.getWindowToken(), 0);
     }
 }

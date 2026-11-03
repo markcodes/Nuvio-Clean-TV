@@ -54,19 +54,19 @@ final class Nuvio {
 
     // ---------- model ----------
     static final class Item {
-        String type, id, name, poster, background, description, year, sub, videoId; int pct = -1, season = -1, episode = -1;
+        String type, id, name, poster, background, logo, description, year, sub, videoId; int pct = -1, season = -1, episode = -1;
         JSONObject toJson() throws Exception {
-            return new JSONObject().put("type", type).put("id", id).put("name", name).put("poster", poster).put("background", background)
+            return new JSONObject().put("type", type).put("id", id).put("name", name).put("poster", poster).put("background", background).put("logo", logo)
                     .put("description", description).put("year", year).put("sub", sub).put("pct", pct).put("videoId", videoId).put("season", season).put("episode", episode);
         }
         static Item from(JSONObject j) {
             Item i = new Item(); i.type = j.optString("type"); i.id = j.optString("id"); i.name = j.optString("name");
-            i.poster = j.optString("poster"); i.background = j.optString("background"); i.description = j.optString("description");
+            i.poster = j.optString("poster"); i.background = j.optString("background"); i.logo = j.optString("logo"); i.description = j.optString("description");
             i.year = j.optString("year"); i.sub = j.optString("sub"); i.pct = j.optInt("pct", -1); i.videoId = j.optString("videoId", null); i.season = j.optInt("season", -1); i.episode = j.optInt("episode", -1); return i;
         }
         static Item fromMeta(JSONObject m, String fallbackType) {
             Item i = new Item(); i.type = norm(m.optString("type", fallbackType)); i.id = m.optString("id"); i.name = m.optString("name");
-            i.poster = m.optString("poster"); i.background = m.optString("background");
+            i.poster = m.optString("poster"); i.background = m.optString("background"); i.logo = m.optString("logo");
             i.description = m.optString("description");
             String ri = m.optString("releaseInfo"); if (ri.isEmpty()) ri = m.optString("year"); i.year = ri;
             JSONArray g = m.optJSONArray("genres"); String rating = m.optString("imdbRating");

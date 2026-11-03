@@ -58,6 +58,7 @@ public class MainActivity extends Activity implements Rows.Listener {
     private ImageView backdrop, heroArt;
     private View heroFade;
     private LinearLayout heroText, sidebar, catalogPage, appsPage;
+    private ImageView heroLogo;
     private TextView heroChip, heroTitle, heroMeta, heroDesc, clock, status;
     private RecyclerView rowsList, appsGrid;
     private final List<Nuvio.Row> rows = new ArrayList<>();
@@ -114,7 +115,9 @@ public class MainActivity extends Activity implements Rows.Listener {
         heroMeta = text(this, "", 14, 0xE6FFFFFF, false); heroMeta.setPadding(0, dp(this, 8), 0, 0);
         heroDesc = text(this, "", 14, 0xC0FFFFFF, false); heroDesc.setMaxLines(3); heroDesc.setLineSpacing(0, 1.25f); heroDesc.setPadding(0, dp(this, 8), 0, 0);
         heroDesc.setMaxWidth((int) (W * 0.42f));
-        heroText.addView(heroChip); heroText.addView(heroTitle); heroText.addView(heroMeta); heroText.addView(heroDesc);
+        heroLogo = new ImageView(this); heroLogo.setAdjustViewBounds(true); heroLogo.setScaleType(ImageView.ScaleType.FIT_START); heroLogo.setVisibility(View.GONE);
+        LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams((int) (W * 0.32f), dp(this, 84)); llp.topMargin = dp(this, 6);
+        heroText.addView(heroChip); heroText.addView(heroLogo, llp); heroText.addView(heroTitle); heroText.addView(heroMeta); heroText.addView(heroDesc);
         catalogPage.addView(heroText, new LinearLayout.LayoutParams(-1, (int) (H * 0.40f)));
         status = text(this, "", 16, 0xFFB3B3B3, false); status.setVisibility(View.GONE); status.setPadding(dp(this, 104), 0, 0, 0);
         catalogPage.addView(status);
@@ -285,27 +288,31 @@ public class MainActivity extends Activity implements Rows.Listener {
     @Override public void onItemFocused(Nuvio.Row row, Nuvio.Item it) {
         String desc = it.description == null ? "" : it.description;
         String meta = row.continueWatching ? Nuvio.nonEmpty(it.sub, "") + (it.year != null && !it.year.isEmpty() ? " · " + it.year : "") : Nuvio.nonEmpty(it.sub, it.year);
-        heroLater(row.title, it.name, meta, desc, Nuvio.nonEmpty(it.background, it.poster));
+        heroLater(row.title, it.name, meta, desc, Nuvio.nonEmpty(it.background, it.poster), it.logo);
     }
     @Override public void onFolderFocused(Nuvio.Row row, JSONObject f) {
         JSONArray s = f.optJSONArray("sources"); int n = s == null ? 0 : s.length();
-        heroLater(row.title, f.optString("title"), n + (n == 1 ? " source" : " sources"), "OK opens this folder.", f.isNull("coverImageUrl") ? "" : f.optString("coverImageUrl"));
+        // Nuvio's folder hero: its wide backdrop and title logo, not the tile's cover collage.
+        String bg = str(f, "heroBackdropUrl"); if (bg.isEmpty()) bg = str(f, "coverImageUrl");
+        heroLater(row.title, f.optString("title"), n + (n == 1 ? " source" : " sources"), "OK opens this folder.", bg, str(f, "titleLogoUrl"));
     }
     @Override public void onRowFocused(int rowIndex, View rowView) {
         ((RowsLayout) rowsList.getLayoutManager()).showRow(rowsList, rowIndex);
     }
-    private void heroLater(String chip, String title, String meta, String desc, String img) {
+    private static String str(JSONObject o, String k) { return o.isNull(k) ? "" : o.optString(k, ""); }
+    private void heroLater(String chip, String title, String meta, String desc, String img, String logo) {
         if (pendingHero != null) ui.removeCallbacks(pendingHero);
         hero(title, chip, desc, meta);      // text at once
         pendingHero = () -> {                // images once focus settles, so fast scrolling does not load every backdrop
             Images.loadBlurred(backdrop, img, null);
             Images.load(heroArt, img, (int) (getResources().getDisplayMetrics().widthPixels * 0.66f), null);
+            if (logo != null && !logo.isEmpty()) Images.load(heroLogo, logo, (int) (getResources().getDisplayMetrics().widthPixels * 0.32f), () -> { heroLogo.setVisibility(View.VISIBLE); heroTitle.setVisibility(View.GONE); });
         };
         ui.postDelayed(pendingHero, 220);
         frostLater(700);
     }
     private void hero(String title, String chip, String desc, String meta) {
-        heroChip.setText(chip == null ? "" : chip); heroTitle.setText(title); heroMeta.setText(meta == null ? "" : meta); heroDesc.setText(desc);
+        heroChip.setText(chip == null ? "" : chip); heroTitle.setText(title); heroTitle.setVisibility(View.VISIBLE); heroLogo.setVisibility(View.GONE); heroLogo.setImageDrawable(null); heroMeta.setText(meta == null ? "" : meta); heroDesc.setText(desc);
         heroMeta.setVisibility(meta == null || meta.isEmpty() ? View.GONE : View.VISIBLE);
     }
 
