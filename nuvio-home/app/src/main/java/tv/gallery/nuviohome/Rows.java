@@ -32,7 +32,7 @@ final class Rows {
 
     static int dp(Context c, float v) { return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, c.getResources().getDisplayMetrics()); }
     static GradientDrawable round(int color, float r, Context c) { GradientDrawable g = new GradientDrawable(); g.setColor(color); g.setCornerRadius(dp(c, r)); return g; }
-    static final float CORNER = 7f, ZOOM = 1.12f;
+    static final float CORNER = 7f, ZOOM = 1.2f;
     /** Apple TV-style focus: the card zooms in and lifts on a soft shadow; no ring. */
     static void lift(View card, View art, boolean f) {
         card.animate().scaleX(f ? ZOOM : 1f).scaleY(f ? ZOOM : 1f).translationZ(f ? dp(card.getContext(), 12) : 0).setDuration(160)
@@ -56,9 +56,9 @@ final class Rows {
             Context c = p.getContext();
             LinearLayout box = new LinearLayout(c); box.setOrientation(LinearLayout.VERTICAL);
             box.setLayoutParams(new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-            TextView t = text(c, "", 18, 0xF2FFFFFF, true); t.setPadding(startPad + dp(c, 4), dp(c, 14), 0, dp(c, 2)); box.addView(t);
+            TextView t = text(c, "", 18, 0xF2FFFFFF, true); t.setPadding(startPad + dp(c, 4), dp(c, 10), 0, 0); box.addView(t);
             RecyclerView r = new RecyclerView(c); r.setLayoutManager(new LinearLayoutManager(c, LinearLayoutManager.HORIZONTAL, false));
-            r.setRecycledViewPool(cardPool); r.setClipToPadding(false); r.setClipChildren(true); r.setPadding(startPad, dp(c, 14), dp(c, 48), dp(c, 14));
+            r.setRecycledViewPool(cardPool); r.setClipToPadding(false); r.setClipChildren(true); r.setPadding(startPad, dp(c, 22), dp(c, 48), dp(c, 22));
             r.setItemAnimator(null); r.setHasFixedSize(true);
             box.setClipChildren(false); box.addView(r, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             return new VH(box, t, r);

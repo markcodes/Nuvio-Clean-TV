@@ -71,22 +71,23 @@ public class DetailActivity extends Activity {
         page.addView(metaLine);
         buttons = new LinearLayout(this); buttons.setClipChildren(false); buttons.setClipToPadding(false); buttons.setPadding(dp(this, 4), dp(this, 22), dp(this, 4), dp(this, 6));
         page.addView(buttons);
-        credits = text(this, "", 14, 0xFFB3B3B3, false); credits.setPadding(0, dp(this, 18), 0, 0); credits.setMaxWidth((int) (W * 0.6f));
+        credits = text(this, "", 14, 0xFFB3B3B3, false); credits.setPadding(0, dp(this, 18), 0, 0);
         page.addView(credits);
         desc = text(this, item.description == null ? "" : item.description, 15, Color.WHITE, false);
-        desc.setLineSpacing(0, 1.35f); desc.setMaxLines(6); desc.setMaxWidth((int) (W * 0.55f)); desc.setPadding(0, dp(this, 10), 0, 0);
+        desc.setLineSpacing(0, 1.35f); desc.setMaxLines(6); desc.setPadding(0, dp(this, 10), 0, 0);
         page.addView(desc);
         status = text(this, "Loading details…", 13, 0xFF808080, false); status.setPadding(0, dp(this, 10), 0, 0);
         page.addView(status);
 
         seriesBox = new LinearLayout(this); seriesBox.setOrientation(LinearLayout.VERTICAL); seriesBox.setVisibility(View.GONE); seriesBox.setClipChildren(false);
-        seasonsRow = new LinearLayout(this); seasonsRow.setPadding(0, dp(this, 28), 0, dp(this, 8));
+        seasonsRow = new LinearLayout(this); seasonsRow.setPadding(dp(this, 56), dp(this, 28), dp(this, 56), dp(this, 8));
         HorizontalScrollView hs = new HorizontalScrollView(this); hs.setHorizontalScrollBarEnabled(false); hs.addView(seasonsRow);
         seriesBox.addView(hs);
-        episodesRow = new LinearLayout(this); episodesRow.setClipChildren(false); episodesRow.setPadding(dp(this, 4), dp(this, 10), dp(this, 40), dp(this, 10));
+        episodesRow = new LinearLayout(this); episodesRow.setClipChildren(false); episodesRow.setPadding(dp(this, 60), dp(this, 10), dp(this, 56), dp(this, 10));
         HorizontalScrollView he = new HorizontalScrollView(this); he.setHorizontalScrollBarEnabled(false); he.setClipChildren(false); he.setClipToPadding(false); he.addView(episodesRow);
         seriesBox.addView(he);
-        page.addView(seriesBox);
+        LinearLayout.LayoutParams sbp = new LinearLayout.LayoutParams(-1, -2); sbp.leftMargin = -dp(this, 56); sbp.rightMargin = -dp(this, 56);
+        page.addView(seriesBox, sbp);   // seasons and episodes run edge to edge
 
         scroll.addView(page);
         root.addView(scroll, new FrameLayout.LayoutParams(-1, -1));

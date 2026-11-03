@@ -42,12 +42,12 @@ public class FolderActivity extends Activity implements Rows.Listener {
         backdrop = new ImageView(this); backdrop.setScaleType(ImageView.ScaleType.CENTER_CROP); backdrop.setAlpha(0.5f);
         root.addView(backdrop, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout page = new LinearLayout(this); page.setOrientation(LinearLayout.VERTICAL); page.setPadding(0, dp(this, 36), 0, 0); 
-        TextView ft = text(this, folder.optString("title"), 30, Color.WHITE, true); ft.setPadding(dp(this, 56), 0, 0, 0); page.addView(ft);
-        heroTitle = text(this, "", 20, Color.WHITE, true); heroTitle.setSingleLine(true); heroTitle.setPadding(dp(this, 56), dp(this, 14), 0, 0);
-        heroMeta = text(this, "", 13, 0xD9FFFFFF, false); heroMeta.setPadding(dp(this, 56), dp(this, 6), 0, 0);
-        heroDesc = text(this, "", 13, 0xB3FFFFFF, false); heroDesc.setLines(2); heroDesc.setMaxWidth(dp(this, 576)); heroDesc.setPadding(dp(this, 56), dp(this, 6), 0, 0);
+        TextView ft = text(this, folder.optString("title"), 30, Color.WHITE, true); ft.setPadding(dp(this, 56), 0, dp(this, 56), 0); page.addView(ft);
+        heroTitle = text(this, "", 20, Color.WHITE, true); heroTitle.setSingleLine(true); heroTitle.setPadding(dp(this, 56), dp(this, 14), dp(this, 56), 0);
+        heroMeta = text(this, "", 13, 0xD9FFFFFF, false); heroMeta.setPadding(dp(this, 56), dp(this, 6), dp(this, 56), 0);
+        heroDesc = text(this, "", 13, 0xB3FFFFFF, false); heroDesc.setLines(2); heroDesc.setPadding(dp(this, 56), dp(this, 6), dp(this, 56), 0);
         page.addView(heroTitle); page.addView(heroMeta); page.addView(heroDesc);
-        status = text(this, "Loading…", 15, 0xFFB3B3B3, false); status.setPadding(dp(this, 56), dp(this, 16), 0, 0); page.addView(status);
+        status = text(this, "Loading…", 15, 0xFFB3B3B3, false); status.setPadding(dp(this, 56), dp(this, 16), dp(this, 56), 0); page.addView(status);
         list = new RecyclerView(this); list.setLayoutManager(new RowsLayout(this)); list.setItemAnimator(null); list.setClipToPadding(false);
         list.setPadding(0, 0, 0, getResources().getDisplayMetrics().heightPixels / 2);
         adapter = new Rows.RowsAdapter(rows, this, dp(this, 56)); list.setAdapter(adapter);

@@ -24,7 +24,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.recyclerview.widget.ConcatAdapter;
-import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.json.JSONArray;
@@ -48,7 +48,6 @@ import static tv.gallery.nuviohome.Rows.text;
  */
 public class MainActivity extends Activity implements Rows.Listener {
     private static final int BG = 0xFF1E1F23;
-    private int COLS = 3;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final ExecutorService bg = Executors.newSingleThreadExecutor();
     private Nuvio nuvio;
@@ -56,7 +55,10 @@ public class MainActivity extends Activity implements Rows.Listener {
 
     private FrameLayout root, heroLayer;
     private ImageView bdA, bdB, bdFront;
-    private RecyclerView rowsList, appsGrid;
+    private RecyclerView rowsList;
+    private android.widget.ScrollView appsScroll;
+    private LinearLayout appsRows;
+    private boolean appsBuilt;
     private LinearLayout appsPage, sidebar, pill, heroView, dots;
     private ImageView pillIcon, heroLogo;
     private TextView pillLabel, status, heroTitle, heroMeta, heroDesc, sideClock, sideName, avatar;
@@ -121,14 +123,16 @@ public class MainActivity extends Activity implements Rows.Listener {
 
         // Applications
         appsPage = new LinearLayout(this); appsPage.setOrientation(LinearLayout.VERTICAL); appsPage.setVisibility(View.GONE);
-        appsPage.setPadding(PAD, dp(this, 92), dp(this, 40), 0);
-        TextView date = text(this, DateFormat.format("EEEE d MMMM", new Date()).toString().toUpperCase(), 13, 0xB3FFFFFF, false); date.setLetterSpacing(0.18f);
+        appsPage.setPadding(0, dp(this, 92), 0, 0);   // rows run to the screen edge; text keeps the 56dp margin appsPage.setClipChildren(false); appsPage.setClipToPadding(false);
+        TextView date = text(this, DateFormat.format("EEEE d MMMM", new Date()).toString().toUpperCase(), 13, 0xB3FFFFFF, false); date.setLetterSpacing(0.18f); date.setPadding(PAD, 0, PAD, 0);
         appsPage.addView(date);
-        TextView greet = text(this, greeting(), 28, Color.WHITE, true); greet.setPadding(0, dp(this, 6), 0, dp(this, 6)); appsPage.addView(greet);
-        appsGrid = new RecyclerView(this); COLS = Math.max(1, (W - PAD - dp(this, 40)) / (dp(this, 224) + 2 * dp(this, 9)));
-        appsGrid.setLayoutManager(new GridLayoutManager(this, COLS)); appsGrid.setClipToPadding(false); appsGrid.setClipChildren(false);
-        appsGrid.setPadding(0, dp(this, 12), 0, dp(this, 60)); appsGrid.setItemAnimator(null);
-        appsPage.addView(appsGrid, new LinearLayout.LayoutParams(-1, 0, 1));
+        TextView greet = text(this, greeting(), 28, Color.WHITE, true); greet.setPadding(PAD, dp(this, 6), PAD, dp(this, 6)); appsPage.addView(greet);
+        appsScroll = new android.widget.ScrollView(this); appsScroll.setVerticalScrollBarEnabled(false); appsScroll.setClipChildren(false); appsScroll.setClipToPadding(false);
+        appsScroll.setFillViewport(true);
+        appsRows = new LinearLayout(this); appsRows.setOrientation(LinearLayout.VERTICAL); appsRows.setClipChildren(false); appsRows.setClipToPadding(false);
+        appsRows.setPadding(0, dp(this, 4), 0, dp(this, 60));
+        appsScroll.addView(appsRows);
+        appsPage.addView(appsScroll, new LinearLayout.LayoutParams(-1, 0, 1));
         root.addView(appsPage, new FrameLayout.LayoutParams(-1, -1));
 
         status = text(this, "", 16, 0xFFD0D0D0, false); status.setVisibility(View.GONE); status.setMaxWidth((int) (W * 0.5f));
@@ -160,14 +164,14 @@ public class MainActivity extends Activity implements Rows.Listener {
         @Override public void onBindViewHolder(RecyclerView.ViewHolder h, int p) { }
     }
     private void buildHero() {
-        heroView = new LinearLayout(this); heroView.setOrientation(LinearLayout.VERTICAL); heroView.setPadding(PAD, 0, 0, 0); heroView.setClipChildren(false); heroView.setClipToPadding(false);
+        heroView = new LinearLayout(this); heroView.setOrientation(LinearLayout.VERTICAL); heroView.setPadding(PAD, 0, PAD, 0); heroView.setClipChildren(false); heroView.setClipToPadding(false);
         heroLogo = new ImageView(this); heroLogo.setAdjustViewBounds(true); heroLogo.setScaleType(ImageView.ScaleType.FIT_START); heroLogo.setVisibility(View.GONE);
         heroView.addView(heroLogo, new LinearLayout.LayoutParams((int) (W * 0.30f), dp(this, 96)));
         heroTitle = text(this, "", 40, Color.WHITE, true); heroTitle.setMaxLines(2); heroTitle.setMaxWidth((int) (W * 0.5f));
         heroView.addView(heroTitle);
         heroMeta = text(this, "", 15, 0xF2FFFFFF, true); heroMeta.setPadding(0, dp(this, 12), 0, 0);
         heroView.addView(heroMeta);
-        heroDesc = text(this, "", 15, 0xE6FFFFFF, false); heroDesc.setMaxLines(2); heroDesc.setLineSpacing(0, 1.25f); heroDesc.setMaxWidth((int) (W * 0.36f)); heroDesc.setPadding(0, dp(this, 8), 0, 0);
+        heroDesc = text(this, "", 15, 0xE6FFFFFF, false); heroDesc.setMaxLines(2); heroDesc.setLineSpacing(0, 1.25f); heroDesc.setPadding(0, dp(this, 8), 0, 0);
         heroView.addView(heroDesc);
         LinearLayout btns = new LinearLayout(this); btns.setGravity(Gravity.CENTER_VERTICAL); btns.setPadding(0, dp(this, 18), 0, dp(this, 4)); btns.setClipChildren(false); btns.setClipToPadding(false);
         playBtn = heroButton(btns, R.drawable.ic_play, "Play", v -> heroPlay());
@@ -291,7 +295,7 @@ public class MainActivity extends Activity implements Rows.Listener {
         sideClock = text(this, "", 14, 0xCCFFFFFF, false); head.addView(sideClock);
         sideItems.add(head);
         styleSide(head, null, new TextView[]{sideName, sideClock});
-        head.setOnClickListener(v -> account());
+        head.setOnClickListener(v -> { if (nuvio.signedIn()) pickProfile(); else account(); });   // the profile opens "Who's watching?"
         sidebar.addView(head);
         View gap = new View(this); sidebar.addView(gap, new LinearLayout.LayoutParams(1, dp(this, 12)));
         for (int i = 0; i < LABELS.length; i++) {
@@ -357,13 +361,13 @@ public class MainActivity extends Activity implements Rows.Listener {
         showingApps = apps;
         rowsList.setVisibility(apps ? View.GONE : View.VISIBLE); appsPage.setVisibility(apps ? View.VISIBLE : View.GONE);
         pillIcon.setImageResource(apps ? R.drawable.ic_apps : R.drawable.ic_catalog);
-        if (apps && appsGrid.getAdapter() == null) appsGrid.setAdapter(new AppsAdapter(loadApps()));
+        if (apps && !appsBuilt) { appsBuilt = true; buildAppRows(loadApps()); }
         syncHeroFade();
     }
     private void focusContent() {
         ui.post(() -> {
             if (lastContentFocus != null && lastContentFocus.isAttachedToWindow() && lastContentFocus.isShown()) { lastContentFocus.requestFocus(); return; }
-            if (showingApps) { if (!appsGrid.requestFocus()) appsGrid.post(appsGrid::requestFocus); }
+            if (showingApps) { if (!appsRows.requestFocus()) appsRows.post(appsRows::requestFocus); }
             else heroFirst.requestFocus();
         });
     }
@@ -389,14 +393,13 @@ public class MainActivity extends Activity implements Rows.Listener {
         }
         return super.dispatchKeyEvent(e);
     }
-    /** True for the hero's Play button, the first card of a row, or a card in the first column of the app grid. */
+    /** True for the hero's Play button or the first card of a row (catalog rows and app rows). */
     private boolean atRowStart(View f) {
         if (f == heroFirst) return true;
         View card = f; ViewParent p = f.getParent();
         while (p instanceof View && !(p instanceof RecyclerView)) { card = (View) p; p = p.getParent(); }
         if (!(p instanceof RecyclerView)) return false;
         RecyclerView rv = (RecyclerView) p; int pos = rv.getChildAdapterPosition(card);
-        if (rv == appsGrid) return pos % COLS == 0;
         return rv != rowsList && pos == 0;
     }
 
@@ -470,10 +473,16 @@ public class MainActivity extends Activity implements Rows.Listener {
                 JSONArray ps = nuvio.profiles();
                 List<String> names = new ArrayList<>(), labels = new ArrayList<>(); List<Integer> idx = new ArrayList<>(); List<Boolean> locked = new ArrayList<>();
                 for (int i = 0; i < ps.length(); i++) { JSONObject p = ps.getJSONObject(i); names.add(p.optString("name")); locked.add(p.optBoolean("pin_enabled")); labels.add(p.optString("name") + (p.optBoolean("pin_enabled") ? "  🔒" : "")); idx.add(p.optInt("profile_index")); }
-                ui.post(() -> new AlertDialog.Builder(this).setTitle("Who's watching?").setItems(labels.toArray(new String[0]), (d, w) -> {
-                    Runnable go = () -> { nuvio.setProfile(idx.get(w), names.get(w), locked.get(w)); lastContentFocus = null; unlock(); showHome(nuvio.cached()); refresh(true); };
-                    if (locked.get(w)) Pin.ask(this, idx.get(w), names.get(w), go, this::pickProfile); else go.run();
-                }).setCancelable(!nuvio.profileName().isEmpty() && rowsList.getVisibility() != View.INVISIBLE).show());
+                boolean optional = !nuvio.profileName().isEmpty() && rowsList.getVisibility() != View.INVISIBLE;
+                ui.post(() -> {
+                    AlertDialog.Builder b = new AlertDialog.Builder(this).setTitle("Who's watching?").setItems(labels.toArray(new String[0]), (d, w) -> {
+                        Runnable go = () -> { nuvio.setProfile(idx.get(w), names.get(w), locked.get(w)); lastContentFocus = null; unlock(); showHome(nuvio.cached()); refresh(true); };
+                        if (locked.get(w)) Pin.ask(this, idx.get(w), names.get(w), go, this::pickProfile); else go.run();
+                    }).setCancelable(optional);
+                    if (optional) b.setNeutralButton("Refresh Home", (d, w) -> { Toast.makeText(this, "Refreshing your Nuvio Home…", Toast.LENGTH_SHORT).show(); refresh(true); })
+                            .setNegativeButton("Sign out", (d, w) -> bg.execute(() -> { nuvio.signOut(); ui.post(() -> { lastContentFocus = null; showHome(null); }); }));
+                    b.show();
+                });
             } catch (Exception e) { ui.post(() -> Toast.makeText(this, "Couldn't load profiles: " + e.getMessage(), Toast.LENGTH_LONG).show()); }
         });
     }
@@ -489,7 +498,7 @@ public class MainActivity extends Activity implements Rows.Listener {
     }
 
     // ---------- applications ----------
-    static final class App { String label, pkg; Intent launch; Drawable banner, icon; }
+    static final class App { String label, pkg; Intent launch; Drawable banner, icon; int cat = -1; boolean game; }
     private List<App> loadApps() {
         PackageManager pm = getPackageManager();
         List<App> out = new ArrayList<>();
@@ -499,10 +508,50 @@ public class MainActivity extends Activity implements Rows.Listener {
             a.launch = pm.getLeanbackLaunchIntentForPackage(a.pkg);
             a.banner = ri.activityInfo.loadBanner(pm); if (a.banner == null) a.banner = ri.activityInfo.applicationInfo.loadBanner(pm);
             if (a.banner == null) a.icon = ri.loadIcon(pm);
+            a.cat = ri.activityInfo.applicationInfo.category;
+            a.game = (ri.activityInfo.applicationInfo.flags & android.content.pm.ApplicationInfo.FLAG_IS_GAME) != 0;
             out.add(a);
         }
         Collections.sort(out, (x, y) -> x.label.compareToIgnoreCase(y.label));
         return out;
+    }
+    private static final String[] GROUPS = {"Streaming", "Music & Media", "Games", "Tools", "TV & System", "Other"};
+    private static boolean has(String s, String... words) { for (String w : words) if (s.contains(w)) return true; return false; }
+    /** The app's row: names we know first, then the category the app declares to Android, then TCL/system packages. */
+    static int group(App a) {
+        String n = a.label.toLowerCase(java.util.Locale.ROOT), p = a.pkg.toLowerCase(java.util.Locale.ROOT);
+        if (p.equals("com.android.vending")) return 3;                                   // Play Store
+        if (has(p, "com.google.android.play.games") || has(n, "games")) return 2;
+        if (has(p, "com.google.android.videos") || has(n, "nuvio", "youtube", "netflix", "prime video", "disney", "hbo", "apple tv", "dazn", "plex", "stremio", "kodi", "twitch", "sport", "movies", "crunchyroll", "paramount", "peacock", "hulu", "jellyfin", "emby")) return 0;
+        if (has(n, "music", "spotify", "player", "gallery", "photo", "media", "magiconnect", "exhibition", "t-solo", "tidal", "deezer", "podcast", "radio")) return 1;
+        if (has(n, "downloader", "vpn", "speed", "browser", "file", "cleaner", "send files", "analy")) return 3;
+        if (has(n, "setting", "guide", "quick", "safety", "panel", "tcl", "home") || n.equals("tv") || has(p, "com.tcl.", "com.android.", "com.google.android.tv")) return 4;
+        if (a.game) return 2;
+        switch (a.cat) {
+            case android.content.pm.ApplicationInfo.CATEGORY_VIDEO: return 0;
+            case android.content.pm.ApplicationInfo.CATEGORY_AUDIO: case android.content.pm.ApplicationInfo.CATEGORY_IMAGE: return 1;
+            case android.content.pm.ApplicationInfo.CATEGORY_GAME: return 2;
+            case android.content.pm.ApplicationInfo.CATEGORY_PRODUCTIVITY: case android.content.pm.ApplicationInfo.CATEGORY_ACCESSIBILITY: return 3;
+        }
+        return 5;
+    }
+    /** One sideways row per category, empty categories left out; Nuvio leads Streaming. */
+    private void buildAppRows(List<App> all) {
+        appsRows.removeAllViews();
+        for (int g = 0; g < GROUPS.length; g++) {
+            List<App> in = new ArrayList<>();
+            for (App a : all) if (group(a) == g) in.add(a);
+            if (in.isEmpty()) continue;
+            Collections.sort(in, (x, y) -> { boolean nx = x.label.toLowerCase().contains("nuvio"), ny = y.label.toLowerCase().contains("nuvio"); return nx != ny ? (nx ? -1 : 1) : x.label.compareToIgnoreCase(y.label); });
+            TextView t = text(this, GROUPS[g], 18, Color.WHITE, true); t.setPadding(PAD, dp(this, appsRows.getChildCount() == 0 ? 10 : 18), PAD, 0);
+            appsRows.addView(t);
+            RecyclerView rv = new RecyclerView(this);
+            rv.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+            rv.setClipToPadding(false); rv.setClipChildren(false); rv.setItemAnimator(null);
+            rv.setPadding(PAD, dp(this, 8), PAD, dp(this, 8));   // first tile at the margin; scrolled tiles show to the screen edge
+            rv.setAdapter(new AppsAdapter(in));
+            appsRows.addView(rv, new LinearLayout.LayoutParams(-1, -2));
+        }
     }
     final class AppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         final List<App> apps; final int tileW, tileH;
@@ -519,7 +568,7 @@ public class MainActivity extends Activity implements Rows.Listener {
             TextView name = text(MainActivity.this, "", 14, Color.WHITE, false); name.setSingleLine(true); name.setPadding(0, dp(MainActivity.this, 10), 0, 0); name.setVisibility(View.INVISIBLE);
             card.addView(name);
             int m = dp(MainActivity.this, 9);
-            RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(-1, -2); lp.setMargins(m, m, m, m); card.setLayoutParams(lp);
+            RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(-2, -2); lp.setMargins(0, m, 2 * m, 0); card.setLayoutParams(lp);
             card.setOnFocusChangeListener((v, f) -> { Rows.lift(v, art, f); name.setVisibility(f ? View.VISIBLE : View.INVISIBLE); if (f) lastContentFocus = v; });
             return new RecyclerView.ViewHolder(card) { };
         }
