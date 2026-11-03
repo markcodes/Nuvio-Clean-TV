@@ -34,10 +34,15 @@ final class Rows {
     static GradientDrawable round(int color, float r, Context c) { GradientDrawable g = new GradientDrawable(); g.setColor(color); g.setCornerRadius(dp(c, r)); return g; }
     static final float CORNER = 7f, ZOOM = 1.2f;
     /** Apple TV-style focus: the card zooms in and lifts on a soft shadow; no ring. */
+    /** Every tile sits on a soft shadow, like Apple TV; focus deepens it. */
+    static void shadow(View art) {
+        art.setElevation(dp(art.getContext(), 6));
+        if (android.os.Build.VERSION.SDK_INT >= 28) { art.setOutlineSpotShadowColor(0xFF000000); art.setOutlineAmbientShadowColor(0xFF000000); }
+    }
     static void lift(View card, View art, boolean f) {
         card.animate().scaleX(f ? ZOOM : 1f).scaleY(f ? ZOOM : 1f).translationZ(f ? dp(card.getContext(), 12) : 0).setDuration(160)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
-        art.setElevation(f ? dp(card.getContext(), 10) : 0);
+        art.setElevation(dp(card.getContext(), f ? 16 : 6));
         card.setZ(f ? 1 : 0);
     }
     static GradientDrawable ring(Context c, float r) { GradientDrawable g = new GradientDrawable(); g.setCornerRadius(dp(c, r)); g.setStroke(dp(c, 3), Color.WHITE); g.setColor(Color.TRANSPARENT); return g; }
@@ -84,7 +89,7 @@ final class Rows {
             LinearLayout card = new LinearLayout(c); card.setOrientation(LinearLayout.VERTICAL); card.setFocusable(true); card.setClickable(true);
             card.setClipChildren(false);
             VH h = new VH(card);
-            h.art = new FrameLayout(c); h.art.setBackground(round(0xFF22232A, CORNER, c)); h.art.setClipToOutline(true);
+            h.art = new FrameLayout(c); h.art.setBackground(round(0xFF22232A, CORNER, c)); h.art.setClipToOutline(true); shadow(h.art);
             h.img = new ImageView(c); h.img.setScaleType(ImageView.ScaleType.CENTER_CROP);
             h.art.addView(h.img, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             h.fallback = text(c, "", 14, 0xFFB3B3B3, false); h.fallback.setGravity(Gravity.CENTER); h.fallback.setPadding(dp(c, 8), 0, dp(c, 8), 0);

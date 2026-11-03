@@ -189,7 +189,7 @@ public class DetailActivity extends Activity {
         for (JSONObject v : eps) {
             int ep = v.optInt("episode", v.optInt("number"));
             LinearLayout card = new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL); card.setFocusable(true); card.setClickable(true);
-            FrameLayout art = new FrameLayout(this); art.setBackground(round(0xFF22232A, Rows.CORNER, this)); art.setClipToOutline(true);
+            FrameLayout art = new FrameLayout(this); art.setBackground(round(0xFF22232A, Rows.CORNER, this)); art.setClipToOutline(true); Rows.shadow(art);
             ImageView iv = new ImageView(this); iv.setScaleType(ImageView.ScaleType.CENTER_CROP); art.addView(iv, new FrameLayout.LayoutParams(-1, -1));
             TextView tag = text(this, "E" + ep, 12, Color.WHITE, true); tag.setBackground(round(0xBF000000, 6, this)); tag.setPadding(dp(this, 8), dp(this, 3), dp(this, 8), dp(this, 3));
             FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.START); tp.setMargins(dp(this, 8), 0, 0, dp(this, 8)); art.addView(tag, tp);

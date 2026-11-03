@@ -550,7 +550,7 @@ public class MainActivity extends Activity implements Rows.Listener {
             RecyclerView rv = new RecyclerView(this);
             rv.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
             rv.setClipToPadding(false); rv.setClipChildren(false); rv.setItemAnimator(null);
-            rv.setPadding(PAD, dp(this, 8), PAD, dp(this, 8));   // first tile at the margin; scrolled tiles show to the screen edge
+            rv.setPadding(PAD, dp(this, 8), PAD, dp(this, 14));   // room for the tile shadows   // first tile at the margin; scrolled tiles show to the screen edge
             rv.setAdapter(new AppsAdapter(in));
             appsRows.addView(rv, new LinearLayout.LayoutParams(-1, -2));
         }
@@ -564,7 +564,7 @@ public class MainActivity extends Activity implements Rows.Listener {
         @Override public int getItemCount() { return apps.size(); }
         @Override public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup p, int t) {
             LinearLayout card = new LinearLayout(MainActivity.this); card.setOrientation(LinearLayout.VERTICAL); card.setFocusable(true); card.setClickable(true); card.setGravity(Gravity.START);
-            FrameLayout art = new FrameLayout(MainActivity.this); art.setBackground(round(0xFF2E3036, Rows.CORNER, MainActivity.this)); art.setClipToOutline(true);
+            FrameLayout art = new FrameLayout(MainActivity.this); art.setBackground(round(0xFF2E3036, Rows.CORNER, MainActivity.this)); art.setClipToOutline(true); Rows.shadow(art);
             ImageView iv = new ImageView(MainActivity.this); iv.setScaleType(ImageView.ScaleType.FIT_CENTER); art.addView(iv, new FrameLayout.LayoutParams(-1, -1));
             card.addView(art, new LinearLayout.LayoutParams(tileW, tileH));
             TextView name = text(MainActivity.this, "", 14, Color.WHITE, false); name.setSingleLine(true); name.setPadding(0, dp(MainActivity.this, 10), 0, 0); name.setVisibility(View.INVISIBLE);
