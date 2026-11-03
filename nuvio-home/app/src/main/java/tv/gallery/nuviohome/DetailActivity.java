@@ -64,6 +64,8 @@ public class DetailActivity extends Activity {
     }
 
     private int W, H, PAD;
+    private FrameLayout root;
+    private View reviewScrim, reviewPanel, reviewFrom;
     private Nuvio.Item item;
     private JSONObject meta;
     private final List<Nuvio.Item> similar = new ArrayList<>();
@@ -102,7 +104,7 @@ public class DetailActivity extends Activity {
         W = getResources().getDisplayMetrics().widthPixels; H = getResources().getDisplayMetrics().heightPixels; PAD = dp(this, 56);
         try { JSONArray a = new JSONArray(getIntent().getStringExtra("similar")); for (int i = 0; i < a.length(); i++) similar.add(Nuvio.Item.from(a.getJSONObject(i))); } catch (Exception ignored) { }
 
-        FrameLayout root = new FrameLayout(this); root.setBackgroundColor(0xFF15161A);
+        root = new FrameLayout(this); root.setBackgroundColor(0xFF15161A);
         backdrop = new ImageView(this); backdrop.setScaleType(ImageView.ScaleType.CENTER_CROP);
         root.addView(backdrop, new FrameLayout.LayoutParams(-1, -1));
         // Apple keeps the picture bright: only a light shade at the left and bottom so the text reads.
@@ -452,7 +454,7 @@ public class DetailActivity extends Activity {
             v.setBackground(round(f ? 0x40FFFFFF : 0x1FFFFFFF, 12, this));
             v.animate().scaleX(f ? 1.06f : 1f).scaleY(f ? 1.06f : 1f).translationZ(f ? dp(this, 10) : 0).setDuration(160).start();
         });
-        card.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle(author).setMessage(r.optString("content")).setPositiveButton("Close", null).show());
+        card.setOnClickListener(v -> openReview(author, s.getText().toString(), r.optString("content")));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(this, 300), dp(this, 150)); lp.rightMargin = dp(this, 18);
         rowOf(reviewsSec).addView(card, lp); reviewsSec.setVisibility(View.VISIBLE);
     }
@@ -470,6 +472,58 @@ public class DetailActivity extends Activity {
         card.setOnFocusChangeListener((v, f) -> v.animate().scaleX(f ? 1.1f : 1f).scaleY(f ? 1.1f : 1f).translationZ(f ? dp(this, 10) : 0).setDuration(160).start());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(this, 170), dp(this, 80)); lp.rightMargin = dp(this, 18);
         rowOf(companiesSec).addView(card, lp); companiesSec.setVisibility(View.VISIBLE);
+    }
+
+    /** The full review on frosted glass, like the sidebar; ✕ at the top right, Back also closes. */
+    private void openReview(String author, String rating, String content) {
+        closeReview();
+        reviewFrom = getCurrentFocus();
+        View scrim = new View(this); scrim.setBackgroundColor(0x4D000000); scrim.setClickable(true);
+        root.addView(scrim, new FrameLayout.LayoutParams(-1, -1));
+        LinearLayout panel = new LinearLayout(this); panel.setOrientation(LinearLayout.VERTICAL);
+        Frost glass = new Frost(dp(this, 28)); glass.setGlass(0x8C6E7280); panel.setBackground(glass);
+        panel.setPadding(dp(this, 36), dp(this, 28), dp(this, 28), dp(this, 30)); panel.setElevation(dp(this, 16));
+        LinearLayout head = new LinearLayout(this);
+        LinearLayout who = new LinearLayout(this); who.setOrientation(LinearLayout.VERTICAL);
+        who.addView(text(this, author, 20, Color.WHITE, true));
+        if (rating != null && !rating.isEmpty()) { TextView rt = text(this, rating, 13, 0xD9FFFFFF, false); rt.setPadding(0, dp(this, 4), 0, 0); who.addView(rt); }
+        head.addView(who, new LinearLayout.LayoutParams(0, -2, 1));
+        FrameLayout x = new FrameLayout(this); x.setFocusable(true); x.setClickable(true); x.setBackground(round(0x33FFFFFF, 18, this));
+        ImageView xi = new ImageView(this); xi.setImageResource(R.drawable.ic_close); xi.setColorFilter(Color.WHITE);
+        x.addView(xi, new FrameLayout.LayoutParams(dp(this, 14), dp(this, 14), Gravity.CENTER));
+        x.setOnFocusChangeListener((v, f) -> { v.setBackground(round(f ? 0xFFF2F2F4 : 0x33FFFFFF, 18, this)); xi.setColorFilter(f ? 0xFF16171B : Color.WHITE); v.animate().scaleX(f ? 1.1f : 1f).scaleY(f ? 1.1f : 1f).setDuration(120).start(); });
+        x.setOnClickListener(v -> closeReview());
+        head.addView(x, new LinearLayout.LayoutParams(dp(this, 36), dp(this, 36)));
+        panel.addView(head);
+        ScrollView body = new ScrollView(this); body.setVerticalScrollBarEnabled(false); body.setFocusable(true);
+        TextView t = text(this, content.trim(), 15, Color.WHITE, false); t.setLineSpacing(0, 1.4f); t.setPadding(0, dp(this, 18), dp(this, 8), 0);
+        body.addView(t);
+        body.setOnKeyListener((v, k, e) -> {
+            if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
+            if (k == KeyEvent.KEYCODE_DPAD_UP && !body.canScrollVertically(-1)) { x.requestFocus(); return true; }
+            if (k == KeyEvent.KEYCODE_DPAD_RIGHT) { x.requestFocus(); return true; }
+            if (k == KeyEvent.KEYCODE_DPAD_DOWN && !body.canScrollVertically(1)) return true;
+            if (k == KeyEvent.KEYCODE_DPAD_LEFT) return true;
+            return false;
+        });
+        x.setOnKeyListener((v, k, e) -> {
+            if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
+            if (k == KeyEvent.KEYCODE_DPAD_DOWN || k == KeyEvent.KEYCODE_DPAD_LEFT) { body.requestFocus(); return true; }
+            return k == KeyEvent.KEYCODE_DPAD_UP || k == KeyEvent.KEYCODE_DPAD_RIGHT;   // stay inside the panel
+        });
+        panel.addView(body, new LinearLayout.LayoutParams(-1, -2));
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(Math.min(dp(this, 680), W - 2 * PAD), -2, Gravity.CENTER);
+        lp.topMargin = dp(this, 56); lp.bottomMargin = dp(this, 56);
+        root.addView(panel, lp);
+        panel.setAlpha(0f); panel.setScaleX(0.96f); panel.setScaleY(0.96f);
+        panel.post(() -> { glass.capture(root, panel, panel.getWidth()); panel.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(160).start(); });
+        reviewScrim = scrim; reviewPanel = panel;
+        body.requestFocus();
+    }
+    private void closeReview() {
+        if (reviewPanel == null) return;
+        root.removeView(reviewPanel); root.removeView(reviewScrim); reviewPanel = null; reviewScrim = null;
+        if (reviewFrom != null && reviewFrom.isAttachedToWindow()) reviewFrom.requestFocus();
     }
 
     // ---------- series ----------
@@ -547,6 +601,7 @@ public class DetailActivity extends Activity {
         }).start();
     }
     @Override public boolean dispatchKeyEvent(KeyEvent e) {
+        if (reviewPanel != null && e.getKeyCode() == KeyEvent.KEYCODE_BACK) { if (e.getAction() == KeyEvent.ACTION_UP) closeReview(); return true; }
         if (e.getKeyCode() == KeyEvent.KEYCODE_BACK && e.getAction() == KeyEvent.ACTION_DOWN && scroll != null && scroll.getScrollY() > 0) {
             playBtn.requestFocus(); scroll.smoothScrollTo(0, 0); return true;
         }
