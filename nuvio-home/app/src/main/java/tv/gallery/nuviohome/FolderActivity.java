@@ -43,12 +43,12 @@ public class FolderActivity extends Activity implements Rows.Listener {
         root.addView(backdrop, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout page = new LinearLayout(this); page.setOrientation(LinearLayout.VERTICAL); page.setPadding(dp(this, 56), dp(this, 36), 0, 0); 
         page.addView(text(this, folder.optString("title"), 30, Color.WHITE, true));
-        heroTitle = text(this, "", 20, Color.WHITE, true); heroTitle.setPadding(0, dp(this, 14), 0, 0);
+        heroTitle = text(this, "", 20, Color.WHITE, true); heroTitle.setSingleLine(true); heroTitle.setPadding(0, dp(this, 14), 0, 0);
         heroMeta = text(this, "", 13, 0xD9FFFFFF, false); heroMeta.setPadding(0, dp(this, 6), 0, 0);
-        heroDesc = text(this, "", 13, 0xB3FFFFFF, false); heroDesc.setMaxLines(2); heroDesc.setMaxWidth(dp(this, 520)); heroDesc.setPadding(0, dp(this, 6), 0, 0);
+        heroDesc = text(this, "", 13, 0xB3FFFFFF, false); heroDesc.setLines(2); heroDesc.setMaxWidth(dp(this, 520)); heroDesc.setPadding(0, dp(this, 6), 0, 0);
         page.addView(heroTitle); page.addView(heroMeta); page.addView(heroDesc);
         status = text(this, "Loading…", 15, 0xFFB3B3B3, false); status.setPadding(0, dp(this, 16), 0, 0); page.addView(status);
-        list = new RecyclerView(this); list.setLayoutManager(new LinearLayoutManager(this)); list.setItemAnimator(null); list.setClipToPadding(false);
+        list = new RecyclerView(this); list.setLayoutManager(new RowsLayout(this)); list.setItemAnimator(null); list.setClipToPadding(false);
         list.setPadding(0, 0, 0, getResources().getDisplayMetrics().heightPixels / 2);
         adapter = new Rows.RowsAdapter(rows, this); list.setAdapter(adapter);
         page.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));

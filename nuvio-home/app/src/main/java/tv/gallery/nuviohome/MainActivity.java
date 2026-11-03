@@ -91,13 +91,13 @@ public class MainActivity extends Activity implements Rows.Listener {
 
         backdrop = new ImageView(this); backdrop.setScaleType(ImageView.ScaleType.CENTER_CROP); backdrop.setAlpha(0.55f);
         root.addView(backdrop, new FrameLayout.LayoutParams(-1, -1));
-        heroArt = new ImageView(this); heroArt.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        heroArt = new FadeImageView(this); heroArt.setScaleType(ImageView.ScaleType.CENTER_CROP);
         root.addView(heroArt, new FrameLayout.LayoutParams((int) (W * 0.66f), (int) (H * 0.62f), Gravity.TOP | Gravity.END));
         heroFade = new View(this);
         GradientDrawable left = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[]{0xFF0B0C10, 0x990B0C10, 0x000B0C10});
         GradientDrawable down = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x000B0C10, 0x000B0C10, 0xFF0B0C10});
         heroFade.setBackground(new android.graphics.drawable.LayerDrawable(new Drawable[]{left, down}));
-        root.addView(heroFade, new FrameLayout.LayoutParams((int) (W * 0.66f) + 2, (int) (H * 0.62f) + 2, Gravity.TOP | Gravity.END));
+        heroFade.setVisibility(View.GONE);   // replaced by the transparent fade in FadeImageView
         View scrim = new View(this);
         scrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[]{0xE60B0C10, 0x800B0C10, 0x000B0C10}));
         root.addView(scrim, new FrameLayout.LayoutParams((int) (W * 0.6f), -1));
@@ -114,7 +114,7 @@ public class MainActivity extends Activity implements Rows.Listener {
         catalogPage.addView(heroText, new LinearLayout.LayoutParams(-1, (int) (H * 0.40f)));
         status = text(this, "", 16, 0xFFB3B3B3, false); status.setVisibility(View.GONE);
         catalogPage.addView(status);
-        rowsList = new RecyclerView(this); rowsList.setLayoutManager(new LinearLayoutManager(this)); rowsList.setItemAnimator(null);
+        rowsList = new RecyclerView(this); rowsList.setLayoutManager(new RowsLayout(this)); rowsList.setItemAnimator(null);
         rowsList.setClipToPadding(false); rowsList.setPadding(0, 0, 0, (int) (H * 0.5f));
         rowsAdapter = new Rows.RowsAdapter(rows, this); rowsList.setAdapter(rowsAdapter);
         catalogPage.addView(rowsList, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -201,7 +201,7 @@ public class MainActivity extends Activity implements Rows.Listener {
         frostLater(400);
         showingApps = apps;
         catalogPage.setVisibility(apps ? View.GONE : View.VISIBLE); appsPage.setVisibility(apps ? View.VISIBLE : View.GONE);
-        heroArt.setVisibility(apps ? View.GONE : View.VISIBLE); heroFade.setVisibility(apps ? View.GONE : View.VISIBLE);
+        heroArt.setVisibility(apps ? View.GONE : View.VISIBLE);
         if (apps && appsGrid.getAdapter() == null) appsGrid.setAdapter(new AppsAdapter(loadApps()));
     }
     private void focusContent() {
