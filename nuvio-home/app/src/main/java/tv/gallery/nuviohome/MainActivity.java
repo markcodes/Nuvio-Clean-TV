@@ -223,7 +223,7 @@ public class MainActivity extends Activity implements Rows.Listener {
                 if (k == KeyEvent.KEYCODE_DPAD_LEFT && atRowStart(f)) { lastContentFocus = f; sideItems.get(showingApps ? 1 : 0).requestFocus(); return true; }
                 if (k == KeyEvent.KEYCODE_BACK) {
                     lastContentFocus = f;
-                    if (!showingApps && rowsList.computeVerticalScrollOffset() > 0) { rowsList.scrollToPosition(0); lastContentFocus = null; focusContent(); }
+                    if (!showingApps && rowsList.computeVerticalScrollOffset() > 0) { ((RowsLayout) rowsList.getLayoutManager()).reset(); rowsList.scrollToPosition(0); lastContentFocus = null; focusContent(); }
                     else sideItems.get(showingApps ? 1 : 0).requestFocus();
                     return true;
                 }
@@ -246,6 +246,7 @@ public class MainActivity extends Activity implements Rows.Listener {
         rows.clear();
         if (h != null) rows.addAll(h.rows);
         rowsAdapter.notifyDataSetChanged();
+        ((RowsLayout) rowsList.getLayoutManager()).reset();
         frostLater(1200);
         if (!nuvio.signedIn()) { status("Sign in to Nuvio to fill your Home: sidebar › Nuvio account."); hero("Nuvio Clean TV", "", "Your Nuvio Home, Continue Watching and collections appear here once you sign in.", ""); }
         else if (rows.isEmpty()) status(loading ? "Loading your Nuvio Home…" : "Nothing to show yet.");
@@ -287,7 +288,7 @@ public class MainActivity extends Activity implements Rows.Listener {
         heroLater(row.title, f.optString("title"), n + (n == 1 ? " source" : " sources"), "OK opens this folder.", f.isNull("coverImageUrl") ? "" : f.optString("coverImageUrl"));
     }
     @Override public void onRowFocused(int rowIndex, View rowView) {
-        if (rowView.getTop() != 0) rowsList.smoothScrollBy(0, rowView.getTop());
+        ((RowsLayout) rowsList.getLayoutManager()).showRow(rowsList, rowIndex);
     }
     private void heroLater(String chip, String title, String meta, String desc, String img) {
         if (pendingHero != null) ui.removeCallbacks(pendingHero);

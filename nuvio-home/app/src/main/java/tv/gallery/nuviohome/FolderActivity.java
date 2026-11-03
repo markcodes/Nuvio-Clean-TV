@@ -85,7 +85,7 @@ public class FolderActivity extends Activity implements Rows.Listener {
         Images.loadBlurred(backdrop, Nuvio.nonEmpty(it.background, it.poster), null);
     }
     @Override public void onFolderFocused(Nuvio.Row row, JSONObject folder) { }
-    @Override public void onRowFocused(int rowIndex, View rowView) { if (rowView.getTop() != 0) list.smoothScrollBy(0, rowView.getTop()); }
+    @Override public void onRowFocused(int rowIndex, View rowView) { ((RowsLayout) list.getLayoutManager()).showRow(list, rowIndex); }
     @Override public void onItem(Nuvio.Item it) {
         try { startActivity(new Intent(this, DetailActivity.class).putExtra("item", it.toJson().toString())); } catch (Exception ignored) { }
     }
