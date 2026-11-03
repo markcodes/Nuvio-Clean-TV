@@ -47,7 +47,8 @@ import static tv.gallery.nuviohome.Rows.text;
  * small "‹ Catalog" pill. Pages: Catalog (the owner's Nuvio Home) and Applications.
  */
 public class MainActivity extends Activity implements Rows.Listener {
-    private static final int BG = 0xFF1E1F23, COLS = 5;
+    private static final int BG = 0xFF1E1F23;
+    private int COLS = 3;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final ExecutorService bg = Executors.newSingleThreadExecutor();
     private Nuvio nuvio;
@@ -124,7 +125,8 @@ public class MainActivity extends Activity implements Rows.Listener {
         TextView date = text(this, DateFormat.format("EEEE d MMMM", new Date()).toString().toUpperCase(), 13, 0xB3FFFFFF, false); date.setLetterSpacing(0.18f);
         appsPage.addView(date);
         TextView greet = text(this, greeting(), 28, Color.WHITE, true); greet.setPadding(0, dp(this, 6), 0, dp(this, 6)); appsPage.addView(greet);
-        appsGrid = new RecyclerView(this); appsGrid.setLayoutManager(new GridLayoutManager(this, COLS)); appsGrid.setClipToPadding(false); appsGrid.setClipChildren(false);
+        appsGrid = new RecyclerView(this); COLS = Math.max(1, (W - PAD - dp(this, 40)) / (dp(this, 224) + 2 * dp(this, 9)));
+        appsGrid.setLayoutManager(new GridLayoutManager(this, COLS)); appsGrid.setClipToPadding(false); appsGrid.setClipChildren(false);
         appsGrid.setPadding(0, dp(this, 12), 0, dp(this, 60)); appsGrid.setItemAnimator(null);
         appsPage.addView(appsGrid, new LinearLayout.LayoutParams(-1, 0, 1));
         root.addView(appsPage, new FrameLayout.LayoutParams(-1, -1));
@@ -179,18 +181,18 @@ public class MainActivity extends Activity implements Rows.Listener {
     private View heroButton(LinearLayout parent, int icon, String label, View.OnClickListener l) {
         LinearLayout b = new LinearLayout(this); b.setGravity(Gravity.CENTER); b.setFocusable(true); b.setClickable(true);
         ImageView ic = new ImageView(this); ic.setImageResource(icon); ic.setColorFilter(Color.WHITE);
-        b.addView(ic, new LinearLayout.LayoutParams(dp(this, 22), dp(this, 22)));
+        b.addView(ic, new LinearLayout.LayoutParams(dp(this, 13), dp(this, 13)));
         TextView t = null;
-        if (label != null) { t = text(this, label, 17, Color.WHITE, true); t.setPadding(dp(this, 8), 0, 0, 0); b.addView(t); b.setPadding(dp(this, 30), 0, dp(this, 34), 0); }
+        if (label != null) { t = text(this, label, 12, Color.WHITE, true); t.setPadding(dp(this, 5), 0, 0, 0); b.addView(t); b.setPadding(dp(this, 15), 0, dp(this, 17), 0); }
         final TextView tl = t;
-        b.setBackground(round(0x59000000, 26, this));
+        b.setBackground(round(0x59000000, 14, this));
         b.setOnFocusChangeListener((v, f) -> {
-            v.setBackground(round(f ? 0xFFF4F4F6 : 0x59000000, 26, this)); ic.setColorFilter(f ? 0xFF121316 : Color.WHITE); if (tl != null) tl.setTextColor(f ? 0xFF121316 : Color.WHITE);
+            v.setBackground(round(f ? 0xFFF4F4F6 : 0x59000000, 14, this)); ic.setColorFilter(f ? 0xFF121316 : Color.WHITE); if (tl != null) tl.setTextColor(f ? 0xFF121316 : Color.WHITE);
             v.animate().scaleX(f ? 1.06f : 1f).scaleY(f ? 1.06f : 1f).setDuration(120).start();
             if (f) { lastContentFocus = v; ((RowsLayout) rowsList.getLayoutManager()).showRow(rowsList, 0); }
         });
         b.setOnClickListener(l);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(label != null ? -2 : dp(this, 52), dp(this, 52)); lp.rightMargin = dp(this, 14);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(label != null ? -2 : dp(this, 28), dp(this, 28)); lp.rightMargin = dp(this, 9);
         b.setPivotX(0);
         parent.addView(b, lp);
         return b;
@@ -268,7 +270,7 @@ public class MainActivity extends Activity implements Rows.Listener {
         pillIcon = new ImageView(this); pillIcon.setColorFilter(Color.WHITE); pillIcon.setImageResource(R.drawable.ic_catalog);
         ic.addView(pillIcon, new FrameLayout.LayoutParams(dp(this, 16), dp(this, 16), Gravity.CENTER));
         LinearLayout.LayoutParams icp = new LinearLayout.LayoutParams(dp(this, 28), dp(this, 28)); icp.leftMargin = dp(this, 4); pill.addView(ic, icp);
-        pillLabel = text(this, "Catalog", 15, Color.WHITE, true); pillLabel.setPadding(dp(this, 8), 0, 0, 0); pill.addView(pillLabel);
+        pillLabel = text(this, "", 15, Color.WHITE, true); pillLabel.setPadding(dp(this, 8), 0, 0, 0); pill.addView(pillLabel);
         FrameLayout.LayoutParams pp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.START); pp.leftMargin = PAD - dp(this, 12); pp.topMargin = dp(this, 32);
         root.addView(pill, pp);
     }
@@ -354,7 +356,7 @@ public class MainActivity extends Activity implements Rows.Listener {
         if (apps != showingApps) lastContentFocus = null;
         showingApps = apps;
         rowsList.setVisibility(apps ? View.GONE : View.VISIBLE); appsPage.setVisibility(apps ? View.VISIBLE : View.GONE);
-        pillIcon.setImageResource(apps ? R.drawable.ic_apps : R.drawable.ic_catalog); pillLabel.setText(apps ? "Applications" : "Catalog");
+        pillIcon.setImageResource(apps ? R.drawable.ic_apps : R.drawable.ic_catalog);
         if (apps && appsGrid.getAdapter() == null) appsGrid.setAdapter(new AppsAdapter(loadApps()));
         syncHeroFade();
     }
@@ -481,7 +483,8 @@ public class MainActivity extends Activity implements Rows.Listener {
 
     // ---------- clock ----------
     private void tick() {
-        sideClock.setText(DateFormat.getTimeFormat(this).format(new Date()));
+        String now = DateFormat.getTimeFormat(this).format(new Date());
+        sideClock.setText(now); pillLabel.setText(now);
         ui.postDelayed(this::tick, 20000);
     }
 
@@ -505,12 +508,11 @@ public class MainActivity extends Activity implements Rows.Listener {
         final List<App> apps; final int tileW, tileH;
         AppsAdapter(List<App> a) {
             apps = a;
-            int m = dp(MainActivity.this, 9);
-            tileW = (W - PAD - dp(MainActivity.this, 40)) / COLS - 2 * m; tileH = tileW * 9 / 16;   // banners are 16:9
+            tileW = dp(MainActivity.this, 224); tileH = dp(MainActivity.this, 126);   // same size as the Continue Watching cards
         }
         @Override public int getItemCount() { return apps.size(); }
         @Override public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup p, int t) {
-            LinearLayout card = new LinearLayout(MainActivity.this); card.setOrientation(LinearLayout.VERTICAL); card.setFocusable(true); card.setClickable(true); card.setGravity(Gravity.CENTER_HORIZONTAL);
+            LinearLayout card = new LinearLayout(MainActivity.this); card.setOrientation(LinearLayout.VERTICAL); card.setFocusable(true); card.setClickable(true); card.setGravity(Gravity.START);
             FrameLayout art = new FrameLayout(MainActivity.this); art.setBackground(round(0xFF2E3036, Rows.CORNER, MainActivity.this)); art.setClipToOutline(true);
             ImageView iv = new ImageView(MainActivity.this); iv.setScaleType(ImageView.ScaleType.FIT_CENTER); art.addView(iv, new FrameLayout.LayoutParams(-1, -1));
             card.addView(art, new LinearLayout.LayoutParams(tileW, tileH));
