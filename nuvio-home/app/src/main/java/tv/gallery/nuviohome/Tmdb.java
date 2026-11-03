@@ -39,6 +39,23 @@ final class Tmdb {
         } catch (Exception e) { return "Couldn't reach TMDB: " + e.getMessage(); }
     }
 
+    /** A person with their combined movie and TV credits. null without a key. */
+    static JSONObject person(Context c, int id) {
+        String key = key(c); if (key.isEmpty()) return null;
+        try { Nuvio.Resp r = get(key, "/person/" + id + "?append_to_response=combined_credits"); return r.code == 200 ? new JSONObject(r.body) : null; }
+        catch (Exception e) { return null; }
+    }
+    /** The IMDb id (tt…) for a TMDB movie or tv id, which Nuvio and the addons use. null if TMDB has none. */
+    static String imdbId(Context c, String kind, int id) {
+        String key = key(c); if (key.isEmpty()) return null;
+        try {
+            Nuvio.Resp r = get(key, "/" + kind + "/" + id + "/external_ids");
+            if (r.code != 200) return null;
+            String imdb = new JSONObject(r.body).optString("imdb_id");
+            return imdb.startsWith("tt") ? imdb : null;
+        } catch (Exception e) { return null; }
+    }
+
     /** The title's TMDB record with credits, videos and reviews, found by IMDb id (tt…) or tmdb:id. null without a key or a match. */
     static JSONObject details(Context c, String type, String id) {
         String key = key(c);

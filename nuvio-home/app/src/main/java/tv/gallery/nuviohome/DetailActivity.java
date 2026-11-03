@@ -237,7 +237,7 @@ public class DetailActivity extends Activity {
         return card;
     }
 
-    private View person(String name, String role, String photo) {
+    private View person(String name, String role, String photo, int tmdbId) {
         LinearLayout card = new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL); card.setGravity(Gravity.CENTER_HORIZONTAL); card.setFocusable(true); card.setClickable(true);
         FrameLayout ph = new FrameLayout(this); ph.setBackground(round(0xFF4A505C, 42, this)); ph.setClipToOutline(true); Rows.shadow(ph);
         TextView ini = text(this, initials(name), 20, Color.WHITE, true); ini.setGravity(Gravity.CENTER); ph.addView(ini, new FrameLayout.LayoutParams(-1, -1));
@@ -252,6 +252,10 @@ public class DetailActivity extends Activity {
             n.setTranslationY(f ? dp(this, 7) : 0); r.setTranslationY(f ? dp(this, 7) : 0);
         });
         if (photo != null && !photo.isEmpty()) Images.load(iv, photo, dp(this, 84), null);
+        card.setOnClickListener(v -> {
+            if (tmdbId > 0) startActivity(new Intent(this, PersonActivity.class).putExtra("id", tmdbId).putExtra("name", name).putExtra("photo", photo));
+            else Toast.makeText(this, "Add a TMDB key in Settings to see " + name + "'s movies.", Toast.LENGTH_LONG).show();
+        });
         return card;
     }
     private static String initials(String n) {
@@ -309,9 +313,9 @@ public class DetailActivity extends Activity {
         setCredits(names(m.optJSONArray("cast"), 3), names(m.optJSONArray("director"), 2));
         if (rowOf(castSec).getChildCount() == 0) {
             JSONArray cast = m.optJSONArray("cast"), dir = m.optJSONArray("director"), wr = m.optJSONArray("writer");
-            if (cast != null) for (int i = 0; i < Math.min(12, cast.length()); i++) add(castSec, person(cast.optString(i), "", null), dp(this, 14));
-            if (dir != null) for (int i = 0; i < Math.min(2, dir.length()); i++) add(castSec, person(dir.optString(i), "Director", null), dp(this, 14));
-            if (wr != null) for (int i = 0; i < Math.min(2, wr.length()); i++) add(castSec, person(wr.optString(i), "Writer", null), dp(this, 14));
+            if (cast != null) for (int i = 0; i < Math.min(12, cast.length()); i++) add(castSec, person(cast.optString(i), "", null, 0), dp(this, 14));
+            if (dir != null) for (int i = 0; i < Math.min(2, dir.length()); i++) add(castSec, person(dir.optString(i), "Director", null, 0), dp(this, 14));
+            if (wr != null) for (int i = 0; i < Math.min(2, wr.length()); i++) add(castSec, person(wr.optString(i), "Writer", null, 0), dp(this, 14));
         }
         if (rowOf(trailersSec).getChildCount() == 0) {
             JSONArray tr = m.optJSONArray("trailers");   // Cinemeta: [{source: YouTube id, type: "Trailer"}]
@@ -338,15 +342,15 @@ public class DetailActivity extends Activity {
             JSONArray cast = cr.optJSONArray("cast"), crew = cr.optJSONArray("crew");
             if ((cast != null && cast.length() > 0) || (crew != null && crew.length() > 0)) {
                 clear(castSec);
-                if (cast != null) for (int i = 0; i < Math.min(15, cast.length()); i++) { JSONObject p = cast.optJSONObject(i); if (p != null) add(castSec, person(p.optString("name"), p.optString("character"), img("w185", p.optString("profile_path"))), dp(this, 14)); }
+                if (cast != null) for (int i = 0; i < Math.min(15, cast.length()); i++) { JSONObject p = cast.optJSONObject(i); if (p != null) add(castSec, person(p.optString("name"), p.optString("character"), img("w185", p.optString("profile_path")), p.optInt("id")), dp(this, 14)); }
                 List<String> dirs = new ArrayList<>();
                 if (crew != null) {
                     int writers = 0;
                     for (int i = 0; i < crew.length(); i++) {
                         JSONObject p = crew.optJSONObject(i); if (p == null) continue;
                         String job = p.optString("job");
-                        if ("Director".equals(job)) { dirs.add(p.optString("name")); add(castSec, person(p.optString("name"), "Director", img("w185", p.optString("profile_path"))), dp(this, 14)); }
-                        else if (("Screenplay".equals(job) || "Writer".equals(job)) && writers < 3) { writers++; add(castSec, person(p.optString("name"), job, img("w185", p.optString("profile_path"))), dp(this, 14)); }
+                        if ("Director".equals(job)) { dirs.add(p.optString("name")); add(castSec, person(p.optString("name"), "Director", img("w185", p.optString("profile_path")), p.optInt("id")), dp(this, 14)); }
+                        else if (("Screenplay".equals(job) || "Writer".equals(job)) && writers < 3) { writers++; add(castSec, person(p.optString("name"), job, img("w185", p.optString("profile_path")), p.optInt("id")), dp(this, 14)); }
                     }
                 }
                 if (credits.getText().length() == 0) {
