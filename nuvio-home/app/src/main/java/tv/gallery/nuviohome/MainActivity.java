@@ -1,16 +1,13 @@
 package tv.gallery.nuviohome;
 
-import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -26,8 +23,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.recyclerview.widget.ConcatAdapter;
 import androidx.recyclerview.widget.GridLayoutManager;
-import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.json.JSONArray;
@@ -45,207 +42,360 @@ import static tv.gallery.nuviohome.Rows.round;
 import static tv.gallery.nuviohome.Rows.text;
 
 /**
- * Home: a sidebar (Catalog, Applications, Inputs, Clock, Settings, Nuvio account, Nuvio Settings), the Catalog
- * page (Continue Watching, then the owner's Nuvio Home rows and collections in Nuvio's order, with the focused
- * title's details over a blurred backdrop) and the Applications page. OK on a title opens it in the official Nuvio.
+ * Home, laid out like the Apple TV app: a full-screen featured carousel (backdrop, logo, details, Play / + / info /
+ * next, page dots) with the rows on a grey ground below it, and a floating frosted sidebar that folds away to a
+ * small "‹ Catalog" pill. Pages: Catalog (the owner's Nuvio Home) and Applications.
  */
 public class MainActivity extends Activity implements Rows.Listener {
-    private static final String[] NUVIO_PACKAGES = {"com.nuvio.tv", "com.nuvio.app"};
+    private static final int BG = 0xFF1E1F23, COLS = 5;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final ExecutorService bg = Executors.newSingleThreadExecutor();
     private Nuvio nuvio;
+    private int W, H, PAD;
 
-    private ImageView backdrop, heroArt;
-    private View heroFade;
-    private LinearLayout heroText, sidebar, catalogPage, appsPage;
-    private ImageView heroLogo;
-    private TextView heroChip, heroTitle, heroMeta, heroDesc, clock, status;
+    private FrameLayout root, heroLayer;
+    private ImageView bdA, bdB, bdFront;
     private RecyclerView rowsList, appsGrid;
+    private LinearLayout appsPage, sidebar, pill, heroView, dots;
+    private ImageView pillIcon, heroLogo;
+    private TextView pillLabel, status, heroTitle, heroMeta, heroDesc, sideClock, sideName, avatar;
+    private View playBtn, heroFirst;
     private final List<Nuvio.Row> rows = new ArrayList<>();
+    private final List<Nuvio.Item> featured = new ArrayList<>();
+    private int heroIndex;
     private Rows.RowsAdapter rowsAdapter;
-    private final List<LinearLayout> sideItems = new ArrayList<>();
+    private final List<View> sideItems = new ArrayList<>();
     private boolean sideOpen, showingApps, loading;
     private View lastContentFocus;
-    private Runnable pendingHero;
     private Frost frost;
-    private final Runnable recapture = () -> { if (frost != null) frost.capture((ViewGroup) sidebar.getParent(), sidebar, dp(this, 260)); };
+    private final Runnable recapture = () -> { if (frost != null && sidebar.getWidth() > 0) frost.capture(root, sidebar, sidebar.getWidth() + dp(this, 4)); };
+    private final Runnable rotate = this::autoAdvance;
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         Images.init(this);
         Crash.install(this);
         nuvio = new Nuvio(this);
+        W = getResources().getDisplayMetrics().widthPixels; H = getResources().getDisplayMetrics().heightPixels; PAD = dp(this, 56);
         buildUi();
         showHome(nuvio.cached());
         if (nuvio.signedIn() && nuvio.profileLocked()) {      // a locked profile asks for its PIN when the launcher starts
-            catalogPage.setVisibility(View.INVISIBLE);
+            rowsList.setVisibility(View.INVISIBLE);
             ui.post(() -> Pin.ask(this, nuvio.profile(), nuvio.profileName(), this::unlock, this::pickProfile));
         }
         refresh(false);
         tick();
         Crash.showLast(this);
     }
-    @Override protected void onResume() { super.onResume(); if (nuvio.signedIn() && rows.isEmpty() && !loading) refresh(false); }
-    @Override protected void onNewIntent(Intent i) { super.onNewIntent(i); showPage(false); focusContent(); }   // Home button
+    @Override protected void onResume() { super.onResume(); if (nuvio.signedIn() && rows.isEmpty() && !loading) refresh(false); scheduleRotate(); }
+    @Override protected void onPause() { super.onPause(); ui.removeCallbacks(rotate); }
+    @Override protected void onNewIntent(Intent i) { super.onNewIntent(i); closeSidebar(false); showPage(false); lastContentFocus = null; ((RowsLayout) rowsList.getLayoutManager()).reset(); rowsList.scrollToPosition(0); focusContent(); }
     @Override protected void onDestroy() { super.onDestroy(); bg.shutdownNow(); }
 
     // ---------- layout ----------
     private void buildUi() {
-        FrameLayout root = new FrameLayout(this); root.setBackgroundColor(0xFF0B0C10); root.setClipChildren(false);
-        int W = getResources().getDisplayMetrics().widthPixels, H = getResources().getDisplayMetrics().heightPixels;
+        root = new FrameLayout(this);
+        root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFF2A2B30, BG}));
 
-        backdrop = new ImageView(this); backdrop.setScaleType(ImageView.ScaleType.CENTER_CROP); backdrop.setAlpha(0.55f);
-        root.addView(backdrop, new FrameLayout.LayoutParams(-1, -1));
-        heroArt = new FadeImageView(this); heroArt.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        root.addView(heroArt, new FrameLayout.LayoutParams((int) (W * 0.66f), (int) (H * 0.62f), Gravity.TOP | Gravity.END));
-        heroFade = new View(this);
-        GradientDrawable left = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[]{0xFF0B0C10, 0x990B0C10, 0x000B0C10});
-        GradientDrawable down = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x000B0C10, 0x000B0C10, 0xFF0B0C10});
-        heroFade.setBackground(new android.graphics.drawable.LayerDrawable(new Drawable[]{left, down}));
-        heroFade.setVisibility(View.GONE);   // replaced by the transparent fade in FadeImageView
-        View scrim = new View(this);
-        scrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[]{0xE60B0C10, 0x800B0C10, 0x000B0C10}));
-        root.addView(scrim, new FrameLayout.LayoutParams((int) (W * 0.6f), -1));
+        // Featured backdrop: full screen, sharp, fading out as the rows scroll up.
+        heroLayer = new FrameLayout(this);
+        bdA = new ImageView(this); bdA.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        bdB = new ImageView(this); bdB.setScaleType(ImageView.ScaleType.CENTER_CROP); bdB.setAlpha(0f);
+        heroLayer.addView(bdA, new FrameLayout.LayoutParams(-1, -1)); heroLayer.addView(bdB, new FrameLayout.LayoutParams(-1, -1)); bdFront = bdA;
+        View left = new View(this); left.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[]{0xB3000000, 0x59000000, 0x00000000, 0x00000000}));
+        heroLayer.addView(left, new FrameLayout.LayoutParams(-1, -1));
+        View bottom = new View(this); bottom.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x00000000, 0x00000000, 0x80000000, BG}));
+        heroLayer.addView(bottom, new FrameLayout.LayoutParams(-1, -1));
+        root.addView(heroLayer, new FrameLayout.LayoutParams(-1, -1));
 
-        // Catalog page
-        catalogPage = new LinearLayout(this); catalogPage.setOrientation(LinearLayout.VERTICAL);
-        heroText = new LinearLayout(this); heroText.setOrientation(LinearLayout.VERTICAL); heroText.setPadding(dp(this, 104), 0, 0, 0);
-        heroChip = text(this, "", 13, 0xD9FFFFFF, false);
-        heroTitle = text(this, "", 34, Color.WHITE, true); heroTitle.setMaxLines(2); heroTitle.setPadding(0, dp(this, 6), 0, 0);
-        heroMeta = text(this, "", 14, 0xE6FFFFFF, false); heroMeta.setPadding(0, dp(this, 8), 0, 0);
-        heroDesc = text(this, "", 14, 0xC0FFFFFF, false); heroDesc.setMaxLines(3); heroDesc.setLineSpacing(0, 1.25f); heroDesc.setPadding(0, dp(this, 8), 0, 0);
-        heroDesc.setMaxWidth((int) (W * 0.42f));
-        heroLogo = new ImageView(this); heroLogo.setAdjustViewBounds(true); heroLogo.setScaleType(ImageView.ScaleType.FIT_START); heroLogo.setVisibility(View.GONE);
-        LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams((int) (W * 0.32f), dp(this, 84)); llp.topMargin = dp(this, 6);
-        heroText.addView(heroChip); heroText.addView(heroLogo, llp); heroText.addView(heroTitle); heroText.addView(heroMeta); heroText.addView(heroDesc);
-        catalogPage.addView(heroText, new LinearLayout.LayoutParams(-1, (int) (H * 0.40f)));
-        status = text(this, "", 16, 0xFFB3B3B3, false); status.setVisibility(View.GONE); status.setPadding(dp(this, 104), 0, 0, 0);
-        catalogPage.addView(status);
+        buildHero();
+
+        // Catalog: the featured carousel is the list's first item, the rows follow.
         rowsList = new RecyclerView(this); rowsList.setLayoutManager(new RowsLayout(this)); rowsList.setItemAnimator(null);
-        rowsList.setClipToPadding(false); rowsList.setPadding(0, 0, 0, (int) (H * 0.5f));
-        rowsAdapter = new Rows.RowsAdapter(rows, this, dp(this, 104)); rowsList.setAdapter(rowsAdapter);
-        catalogPage.addView(rowsList, new LinearLayout.LayoutParams(-1, 0, 1));
-        FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(-1, -1); cp.topMargin = dp(this, 36);
-        root.addView(catalogPage, cp);
+        rowsList.setClipToPadding(false); rowsList.setPadding(0, 0, 0, (int) (H * 0.55f));
+        rowsAdapter = new Rows.RowsAdapter(rows, this, PAD);
+        rowsList.setAdapter(new ConcatAdapter(new HeroAdapter(), rowsAdapter));
+        rowsList.addOnScrollListener(new RecyclerView.OnScrollListener() { @Override public void onScrolled(RecyclerView rv, int dx, int dy) { syncHeroFade(); } });
+        root.addView(rowsList, new FrameLayout.LayoutParams(-1, -1));
 
-        // Applications page
+        // Applications
         appsPage = new LinearLayout(this); appsPage.setOrientation(LinearLayout.VERTICAL); appsPage.setVisibility(View.GONE);
+        appsPage.setPadding(PAD, dp(this, 92), dp(this, 40), 0);
         TextView date = text(this, DateFormat.format("EEEE d MMMM", new Date()).toString().toUpperCase(), 13, 0xB3FFFFFF, false); date.setLetterSpacing(0.18f);
         appsPage.addView(date);
-        appsPage.addView(text(this, greeting(), 26, Color.WHITE, false), lp(-2, -2, 6));
-        appsGrid = new RecyclerView(this); appsGrid.setLayoutManager(new GridLayoutManager(this, 6)); appsGrid.setClipToPadding(false); appsGrid.setClipChildren(false);
-        appsGrid.setPadding(dp(this, 4), dp(this, 16), dp(this, 40), dp(this, 40)); appsGrid.setItemAnimator(null);
+        TextView greet = text(this, greeting(), 28, Color.WHITE, true); greet.setPadding(0, dp(this, 6), 0, dp(this, 6)); appsPage.addView(greet);
+        appsGrid = new RecyclerView(this); appsGrid.setLayoutManager(new GridLayoutManager(this, COLS)); appsGrid.setClipToPadding(false); appsGrid.setClipChildren(false);
+        appsGrid.setPadding(0, dp(this, 12), 0, dp(this, 60)); appsGrid.setItemAnimator(null);
         appsPage.addView(appsGrid, new LinearLayout.LayoutParams(-1, 0, 1));
-        FrameLayout.LayoutParams ap = new FrameLayout.LayoutParams(-1, -1); ap.leftMargin = dp(this, 104); ap.topMargin = dp(this, 36);
-        root.addView(appsPage, ap);
+        root.addView(appsPage, new FrameLayout.LayoutParams(-1, -1));
 
-        clock = text(this, "", 15, Color.WHITE, false); clock.setBackground(round(0x33000000, 20, this)); clock.setPadding(dp(this, 14), dp(this, 6), dp(this, 14), dp(this, 6));
-        FrameLayout.LayoutParams clp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END); clp.topMargin = dp(this, 24); clp.rightMargin = dp(this, 32);
-        root.addView(clock, clp);
+        status = text(this, "", 16, 0xFFD0D0D0, false); status.setVisibility(View.GONE); status.setMaxWidth((int) (W * 0.5f));
+        FrameLayout.LayoutParams stp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.START); stp.leftMargin = PAD; stp.bottomMargin = (int) (H * 0.18f);
+        root.addView(status, stp);
 
-        buildSidebar(root);
+        buildPill();
+        buildSidebar();
         setContentView(root);
+        root.getViewTreeObserver().addOnGlobalFocusChangeListener((o, n) -> { if (sideOpen && n != null && !inSidebar(n)) closeSidebar(false); });
     }
-    private LinearLayout.LayoutParams lp(int w, int h, int top) { LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(w, h); p.topMargin = dp(this, top); return p; }
     private static String greeting() { int h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY); return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"; }
 
-    // ---------- sidebar ----------
-    private static final int[] ICONS = {R.drawable.ic_catalog, R.drawable.ic_apps, R.drawable.ic_inputs, R.drawable.ic_clock, R.drawable.ic_settings, R.drawable.ic_account, R.drawable.ic_nuvio};
-    private static final String[] LABELS = {"Catalog", "Applications", "Inputs", "Clock", "Settings", "Nuvio account", "Nuvio Settings"};
-    private TextView[] sideLabels;
-    private void buildSidebar(FrameLayout root) {
-        sidebar = new LinearLayout(this); sidebar.setOrientation(LinearLayout.VERTICAL);
-        frost = new Frost(dp(this, 22)); sidebar.setBackground(frost); sidebar.setPadding(dp(this, 8), dp(this, 18), dp(this, 8), dp(this, 18));
-        sidebar.setElevation(dp(this, 8));
-        sideLabels = new TextView[LABELS.length];
-        for (int i = 0; i < LABELS.length; i++) {
-            if (i == 5) { TextView sec = text(this, "Nuvio", 11, 0x80FFFFFF, false); sec.setPadding(dp(this, 14), dp(this, 18), 0, dp(this, 6)); sec.setTag("label"); sidebar.addView(sec); }
-            LinearLayout it = new LinearLayout(this); it.setGravity(Gravity.CENTER_VERTICAL); it.setFocusable(true); it.setClickable(true);
-            it.setPadding(dp(this, 12), dp(this, 10), dp(this, 12), dp(this, 10)); it.setBackground(null);
-            ImageView ic = new ImageView(this); ic.setImageResource(ICONS[i]); ic.setColorFilter(0xD9FFFFFF);
-            it.addView(ic, new LinearLayout.LayoutParams(dp(this, 22), dp(this, 22)));
-            TextView t = text(this, LABELS[i], 15, Color.WHITE, false); t.setPadding(dp(this, 14), 0, 0, 0); t.setSingleLine(true); t.setVisibility(View.GONE);
-            sideLabels[i] = t; it.addView(t);
-            final int idx = i;
-            it.setOnFocusChangeListener((v, f) -> {
-                v.setBackground(f ? round(0xFFF4F4F6, 14, this) : null);
-                ic.setColorFilter(f ? 0xFF121316 : 0xD9FFFFFF); t.setTextColor(f ? 0xFF121316 : Color.WHITE);
-                ui.post(this::syncSidebar);
-            });
-            it.setOnClickListener(v -> onSide(idx));
-            sideItems.add(it);
-            sidebar.addView(it, lp(-1, -2, 2));
+    // ---------- featured carousel ----------
+    private final class HeroAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+        @Override public int getItemCount() { return 1; }
+        @Override public int getItemViewType(int p) { return 7; }
+        @Override public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup p, int t) {
+            FrameLayout f = new FrameLayout(MainActivity.this); f.setClipChildren(false);
+            f.setLayoutParams(new RecyclerView.LayoutParams(-1, (int) (H * 0.72f)));
+            if (heroView.getParent() != null) ((ViewGroup) heroView.getParent()).removeView(heroView);
+            FrameLayout.LayoutParams hp = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM | Gravity.START); hp.bottomMargin = dp(MainActivity.this, 22);
+            f.addView(heroView, hp);
+            if (dots.getParent() != null) ((ViewGroup) dots.getParent()).removeView(dots);
+            FrameLayout.LayoutParams dp2 = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL); dp2.bottomMargin = dp(MainActivity.this, 30);
+            f.addView(dots, dp2);
+            return new RecyclerView.ViewHolder(f) { };
         }
-        FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(dp(this, 62), -1, Gravity.START);
-        sp.leftMargin = dp(this, 16); sp.topMargin = dp(this, 20); sp.bottomMargin = dp(this, 20);
+        @Override public void onBindViewHolder(RecyclerView.ViewHolder h, int p) { }
+    }
+    private void buildHero() {
+        heroView = new LinearLayout(this); heroView.setOrientation(LinearLayout.VERTICAL); heroView.setPadding(PAD, 0, 0, 0); heroView.setClipChildren(false); heroView.setClipToPadding(false);
+        heroLogo = new ImageView(this); heroLogo.setAdjustViewBounds(true); heroLogo.setScaleType(ImageView.ScaleType.FIT_START); heroLogo.setVisibility(View.GONE);
+        heroView.addView(heroLogo, new LinearLayout.LayoutParams((int) (W * 0.30f), dp(this, 96)));
+        heroTitle = text(this, "", 40, Color.WHITE, true); heroTitle.setMaxLines(2); heroTitle.setMaxWidth((int) (W * 0.5f));
+        heroView.addView(heroTitle);
+        heroMeta = text(this, "", 15, 0xF2FFFFFF, true); heroMeta.setPadding(0, dp(this, 12), 0, 0);
+        heroView.addView(heroMeta);
+        heroDesc = text(this, "", 15, 0xE6FFFFFF, false); heroDesc.setMaxLines(2); heroDesc.setLineSpacing(0, 1.25f); heroDesc.setMaxWidth((int) (W * 0.36f)); heroDesc.setPadding(0, dp(this, 8), 0, 0);
+        heroView.addView(heroDesc);
+        LinearLayout btns = new LinearLayout(this); btns.setGravity(Gravity.CENTER_VERTICAL); btns.setPadding(0, dp(this, 18), 0, dp(this, 4)); btns.setClipChildren(false); btns.setClipToPadding(false);
+        playBtn = heroButton(btns, R.drawable.ic_play, "Play", v -> heroPlay());
+        heroButton(btns, R.drawable.ic_add, null, v -> heroAdd());
+        heroButton(btns, R.drawable.ic_info, null, v -> heroInfo());
+        heroButton(btns, R.drawable.ic_next, null, v -> showFeatured(heroIndex + 1));
+        heroFirst = playBtn;
+        heroView.addView(btns);
+        dots = new LinearLayout(this); dots.setGravity(Gravity.CENTER_VERTICAL);
+    }
+    private View heroButton(LinearLayout parent, int icon, String label, View.OnClickListener l) {
+        LinearLayout b = new LinearLayout(this); b.setGravity(Gravity.CENTER); b.setFocusable(true); b.setClickable(true);
+        ImageView ic = new ImageView(this); ic.setImageResource(icon); ic.setColorFilter(Color.WHITE);
+        b.addView(ic, new LinearLayout.LayoutParams(dp(this, 22), dp(this, 22)));
+        TextView t = null;
+        if (label != null) { t = text(this, label, 17, Color.WHITE, true); t.setPadding(dp(this, 8), 0, 0, 0); b.addView(t); b.setPadding(dp(this, 30), 0, dp(this, 34), 0); }
+        final TextView tl = t;
+        b.setBackground(round(0x59000000, 26, this));
+        b.setOnFocusChangeListener((v, f) -> {
+            v.setBackground(round(f ? 0xFFF4F4F6 : 0x59000000, 26, this)); ic.setColorFilter(f ? 0xFF121316 : Color.WHITE); if (tl != null) tl.setTextColor(f ? 0xFF121316 : Color.WHITE);
+            v.animate().scaleX(f ? 1.06f : 1f).scaleY(f ? 1.06f : 1f).setDuration(120).start();
+            if (f) { lastContentFocus = v; ((RowsLayout) rowsList.getLayoutManager()).showRow(rowsList, 0); }
+        });
+        b.setOnClickListener(l);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(label != null ? -2 : dp(this, 52), dp(this, 52)); lp.rightMargin = dp(this, 14);
+        b.setPivotX(0);
+        parent.addView(b, lp);
+        return b;
+    }
+    private void pickFeatured() {
+        featured.clear();
+        for (Nuvio.Row r : rows) {
+            if (r.continueWatching || r.isCollection()) continue;
+            for (Nuvio.Item it : r.items) if (it.background != null && !it.background.isEmpty() && featured.size() < 8) featured.add(it);
+            if (!featured.isEmpty()) break;
+        }
+        if (featured.isEmpty()) for (Nuvio.Row r : rows) if (r.continueWatching) for (Nuvio.Item it : r.items) if (featured.size() < 8) featured.add(it);
+        dots.removeAllViews();
+        for (int i = 0; i < featured.size() && featured.size() > 1; i++) { View d = new View(this); LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(this, 7), dp(this, 7)); lp.setMargins(dp(this, 4), 0, dp(this, 4), 0); dots.addView(d, lp); }
+        showFeatured(0);
+    }
+    private void showFeatured(int i) {
+        TextView playLabel = (TextView) ((ViewGroup) playBtn).getChildAt(1);
+        if (featured.isEmpty()) {
+            heroLogo.setVisibility(View.GONE); heroTitle.setVisibility(View.VISIBLE);
+            heroTitle.setText(nuvio.signedIn() ? (loading ? "Loading your Nuvio Home…" : "Your Nuvio Home") : "Nuvio Clean TV");
+            heroMeta.setText(""); heroDesc.setText(nuvio.signedIn() ? "" : "Sign in to Nuvio to fill your Home with Continue Watching, your catalogs and collections.");
+            playLabel.setText(nuvio.signedIn() ? "Refresh" : "Sign in");
+            return;
+        }
+        playLabel.setText("Play");
+        heroIndex = ((i % featured.size()) + featured.size()) % featured.size();
+        Nuvio.Item it = featured.get(heroIndex);
+        heroTitle.setText(it.name); heroTitle.setVisibility(View.VISIBLE); heroLogo.setVisibility(View.GONE); heroLogo.setImageDrawable(null);
+        heroMeta.setText(("series".equals(Nuvio.norm(it.type)) ? "TV Show" : "Movie") + (it.sub == null || it.sub.isEmpty() ? "" : "  ·  " + it.sub.replace(" · ", "  ·  ")));
+        heroDesc.setText(it.description == null ? "" : it.description);
+        if (it.logo != null && !it.logo.isEmpty()) Images.load(heroLogo, it.logo, (int) (W * 0.30f), () -> { heroLogo.setVisibility(View.VISIBLE); heroTitle.setVisibility(View.GONE); });
+        // cross-fade the backdrop
+        ImageView back = bdFront == bdA ? bdB : bdA;
+        back.setAlpha(0f);
+        Images.load(back, Nuvio.nonEmpty(it.background, it.poster), W, () -> { back.animate().alpha(1f).setDuration(450).start(); if (bdFront != back) bdFront.animate().alpha(0f).setDuration(450).start(); bdFront = back; });
+        for (int d = 0; d < dots.getChildCount(); d++) {
+            View v = dots.getChildAt(d); boolean on = d == heroIndex;
+            LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) v.getLayoutParams(); lp.width = dp(this, on ? 22 : 7); v.setLayoutParams(lp);
+            v.setBackground(round(on ? 0xFFFFFFFF : 0x99FFFFFF, 4, this));
+        }
+        scheduleRotate();
+    }
+    private Nuvio.Item heroItem() { return featured.isEmpty() ? null : featured.get(heroIndex); }
+    private void heroPlay() {
+        Nuvio.Item it = heroItem();
+        if (it == null) { if (nuvio.signedIn()) refresh(true); else account(); return; }
+        Launch.play(this, it);
+    }
+    private void heroInfo() { Nuvio.Item it = heroItem(); if (it != null) onItem(it); }
+    private void heroAdd() {
+        Nuvio.Item it = heroItem(); if (it == null) return;
+        bg.execute(() -> { boolean ok = nuvio.addToLibrary(it); ui.post(() -> Toast.makeText(this, ok ? "Added " + it.name + " to your Nuvio library" : "Couldn't add to your Nuvio library", Toast.LENGTH_SHORT).show()); });
+    }
+    private void scheduleRotate() { ui.removeCallbacks(rotate); ui.postDelayed(rotate, 9000); }
+    private void autoAdvance() {
+        View hero = rowsList.getLayoutManager().findViewByPosition(0);
+        if (!showingApps && !sideOpen && hero != null && hero.getTop() > -dp(this, 10) && featured.size() > 1) showFeatured(heroIndex + 1);
+        else scheduleRotate();
+    }
+    private void syncHeroFade() {
+        View hero = rowsList.getLayoutManager().findViewByPosition(0);
+        float a = hero == null ? 0f : Math.max(0f, Math.min(1f, 1f + hero.getTop() / (H * 0.55f)));
+        heroLayer.setAlpha(showingApps ? 0f : a);
+        if (!sideOpen) pill.setVisibility(showingApps || a > 0.9f ? View.VISIBLE : View.INVISIBLE);
+    }
+
+    // ---------- pill + sidebar ----------
+    private void buildPill() {
+        pill = new LinearLayout(this); pill.setGravity(Gravity.CENTER_VERTICAL); pill.setPadding(dp(this, 8), dp(this, 6), dp(this, 16), dp(this, 6));
+        pill.setBackground(round(0x66303238, 22, this));
+        ImageView chev = new ImageView(this); chev.setImageResource(R.drawable.ic_back); chev.setColorFilter(0xCCFFFFFF);
+        pill.addView(chev, new LinearLayout.LayoutParams(dp(this, 16), dp(this, 16)));
+        FrameLayout ic = new FrameLayout(this); ic.setBackground(round(0x33FFFFFF, 14, this));
+        pillIcon = new ImageView(this); pillIcon.setColorFilter(Color.WHITE); pillIcon.setImageResource(R.drawable.ic_catalog);
+        ic.addView(pillIcon, new FrameLayout.LayoutParams(dp(this, 16), dp(this, 16), Gravity.CENTER));
+        LinearLayout.LayoutParams icp = new LinearLayout.LayoutParams(dp(this, 28), dp(this, 28)); icp.leftMargin = dp(this, 4); pill.addView(ic, icp);
+        pillLabel = text(this, "Catalog", 15, Color.WHITE, true); pillLabel.setPadding(dp(this, 8), 0, 0, 0); pill.addView(pillLabel);
+        FrameLayout.LayoutParams pp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.START); pp.leftMargin = PAD - dp(this, 12); pp.topMargin = dp(this, 32);
+        root.addView(pill, pp);
+    }
+    private static final int[] ICONS = {R.drawable.ic_catalog, R.drawable.ic_apps, R.drawable.ic_inputs, R.drawable.ic_clock, R.drawable.ic_settings, R.drawable.ic_nuvio};
+    private static final String[] LABELS = {"Catalog", "Applications", "Inputs", "Clock", "Settings", "Nuvio Settings"};
+    private void buildSidebar() {
+        sidebar = new LinearLayout(this); sidebar.setOrientation(LinearLayout.VERTICAL); sidebar.setVisibility(View.GONE);
+        frost = new Frost(dp(this, 28)); sidebar.setBackground(frost); sidebar.setPadding(dp(this, 10), dp(this, 14), dp(this, 10), dp(this, 16));
+        sidebar.setElevation(dp(this, 12));
+        // header: profile (opens the Nuvio account) and the clock
+        LinearLayout head = new LinearLayout(this); head.setGravity(Gravity.CENTER_VERTICAL); head.setFocusable(true); head.setClickable(true);
+        head.setPadding(dp(this, 8), dp(this, 8), dp(this, 12), dp(this, 8));
+        avatar = text(this, "", 15, Color.WHITE, true); avatar.setGravity(Gravity.CENTER);
+        avatar.setBackground(round(0xFF6B5CFF, 18, this));
+        head.addView(avatar, new LinearLayout.LayoutParams(dp(this, 36), dp(this, 36)));
+        sideName = text(this, "", 15, Color.WHITE, false); sideName.setSingleLine(true); sideName.setPadding(dp(this, 10), 0, dp(this, 8), 0);
+        head.addView(sideName, new LinearLayout.LayoutParams(0, -2, 1));
+        sideClock = text(this, "", 14, 0xCCFFFFFF, false); head.addView(sideClock);
+        sideItems.add(head);
+        styleSide(head, null, new TextView[]{sideName, sideClock});
+        head.setOnClickListener(v -> account());
+        sidebar.addView(head);
+        View gap = new View(this); sidebar.addView(gap, new LinearLayout.LayoutParams(1, dp(this, 12)));
+        for (int i = 0; i < LABELS.length; i++) {
+            LinearLayout it = new LinearLayout(this); it.setGravity(Gravity.CENTER_VERTICAL); it.setFocusable(true); it.setClickable(true);
+            it.setPadding(dp(this, 8), dp(this, 7), dp(this, 16), dp(this, 7));
+            FrameLayout circle = new FrameLayout(this); circle.setBackground(round(0x40000000, 17, this));
+            ImageView ic = new ImageView(this); ic.setImageResource(ICONS[i]); ic.setColorFilter(Color.WHITE);
+            circle.addView(ic, new FrameLayout.LayoutParams(dp(this, 18), dp(this, 18), Gravity.CENTER));
+            it.addView(circle, new LinearLayout.LayoutParams(dp(this, 34), dp(this, 34)));
+            TextView t = text(this, LABELS[i], 16, Color.WHITE, false); t.setPadding(dp(this, 12), 0, 0, 0); t.setSingleLine(true);
+            it.addView(t);
+            sideItems.add(it);
+            styleSide(it, ic, new TextView[]{t});
+            final int idx = i;
+            it.setOnClickListener(v -> onSide(idx));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2); lp.topMargin = dp(this, 3);
+            sidebar.addView(it, lp);
+        }
+        FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(dp(this, 250), -2, Gravity.TOP | Gravity.START);
+        sp.leftMargin = dp(this, 22); sp.topMargin = dp(this, 22);
         root.addView(sidebar, sp);
     }
+    private void styleSide(View v, ImageView ic, TextView[] texts) {
+        v.setOnFocusChangeListener((x, f) -> {
+            x.setBackground(f ? round(0xFFF4F4F6, 24, this) : currentBg(x));
+            if (ic != null) ic.setColorFilter(f ? 0xFF121316 : Color.WHITE);
+            for (TextView t : texts) t.setTextColor(f ? 0xFF121316 : Color.WHITE);
+        });
+    }
+    private Drawable currentBg(View item) {
+        int idx = sideItems.indexOf(item) - 1;   // 0 Catalog, 1 Applications
+        return idx == (showingApps ? 1 : 0) ? round(0x26FFFFFF, 24, this) : null;
+    }
     private boolean inSidebar(View v) { while (v != null) { if (v == sidebar) return true; ViewParent p = v.getParent(); v = p instanceof View ? (View) p : null; } return false; }
-    private void syncSidebar() {
-        boolean open = inSidebar(getCurrentFocus());
-        if (open == sideOpen) return; sideOpen = open;
-        int from = sidebar.getWidth(), to = dp(this, open ? 250 : 62);
-        ValueAnimator a = ValueAnimator.ofInt(from, to).setDuration(200);
-        a.addUpdateListener(an -> { ViewGroup.LayoutParams p = sidebar.getLayoutParams(); p.width = (int) an.getAnimatedValue(); sidebar.setLayoutParams(p); });
-        a.start();
-        for (TextView t : sideLabels) t.setVisibility(open ? View.VISIBLE : View.GONE);
-        for (int i = 0; i < sidebar.getChildCount(); i++) { View c = sidebar.getChildAt(i); if ("label".equals(c.getTag())) c.setVisibility(open ? View.VISIBLE : View.INVISIBLE); }
-        recapture.run();
-        frost.setGlass(open ? 0x7314121A : 0x4014121A);
-        (showingApps ? appsPage : catalogPage).animate().alpha(open ? 0.7f : 1f).setDuration(200).start();
+    private void openSidebar() {
+        if (sideOpen) return; sideOpen = true;
+        View f = getCurrentFocus(); if (f != null && !inSidebar(f)) lastContentFocus = f;
+        String name = nuvio.profileName().isEmpty() ? (nuvio.signedIn() ? "Profile " + nuvio.profile() : "Sign in") : nuvio.profileName();
+        sideName.setText(name); avatar.setText(name.substring(0, 1).toUpperCase());
+        for (View it : sideItems) if (!it.hasFocus()) it.setBackground(currentBg(it));
+        pill.setVisibility(View.INVISIBLE);
+        sidebar.setVisibility(View.VISIBLE); sidebar.setAlpha(0f); sidebar.setTranslationX(-dp(this, 24));
+        sidebar.animate().alpha(1f).translationX(0).setDuration(180).start();
+        sidebar.post(recapture);
+        sideItems.get(showingApps ? 2 : 1).requestFocus();
+    }
+    private void closeSidebar(boolean refocus) {
+        if (!sideOpen) return; sideOpen = false;
+        sidebar.animate().alpha(0f).translationX(-dp(this, 24)).setDuration(150).withEndAction(() -> { if (!sideOpen) sidebar.setVisibility(View.GONE); }).start();
+        syncHeroFade();
+        if (refocus) focusContent();
     }
     private void onSide(int i) {
         switch (i) {
-            case 0: showPage(false); focusContent(); break;
-            case 1: showPage(true); focusContent(); break;
+            case 0: showPage(false); closeSidebar(true); break;
+            case 1: showPage(true); closeSidebar(true); break;
             case 2: case 3: case 4: Toast.makeText(this, LABELS[i] + " arrives in the next build", Toast.LENGTH_SHORT).show(); break;
-            case 5: account(); break;
-            case 6: openNuvio(); break;
+            case 5: openNuvio(); break;
         }
     }
-    private void frostLater(long ms) { ui.removeCallbacks(recapture); ui.postDelayed(recapture, ms); }
     private void showPage(boolean apps) {
-        frostLater(400);
+        if (apps != showingApps) lastContentFocus = null;
         showingApps = apps;
-        catalogPage.setVisibility(apps ? View.GONE : View.VISIBLE); appsPage.setVisibility(apps ? View.VISIBLE : View.GONE);
-        heroArt.setVisibility(apps ? View.GONE : View.VISIBLE);
+        rowsList.setVisibility(apps ? View.GONE : View.VISIBLE); appsPage.setVisibility(apps ? View.VISIBLE : View.GONE);
+        pillIcon.setImageResource(apps ? R.drawable.ic_apps : R.drawable.ic_catalog); pillLabel.setText(apps ? "Applications" : "Catalog");
         if (apps && appsGrid.getAdapter() == null) appsGrid.setAdapter(new AppsAdapter(loadApps()));
+        syncHeroFade();
     }
     private void focusContent() {
         ui.post(() -> {
-            if (lastContentFocus != null && lastContentFocus.isAttachedToWindow() && lastContentFocus.getVisibility() == View.VISIBLE && !showingApps) { lastContentFocus.requestFocus(); return; }
-            RecyclerView target = showingApps ? appsGrid : rowsList;
-            if (!target.requestFocus()) sideItems.get(showingApps ? 1 : 0).requestFocus();
+            if (lastContentFocus != null && lastContentFocus.isAttachedToWindow() && lastContentFocus.isShown()) { lastContentFocus.requestFocus(); return; }
+            if (showingApps) { if (!appsGrid.requestFocus()) appsGrid.post(appsGrid::requestFocus); }
+            else heroFirst.requestFocus();
         });
     }
 
     // ---------- keys ----------
     @Override public boolean dispatchKeyEvent(KeyEvent e) {
         if (e.getAction() == KeyEvent.ACTION_DOWN) {
+            scheduleRotate();
             View f = getCurrentFocus();
             int k = e.getKeyCode();
-            if (inSidebar(f)) {
-                if (k == KeyEvent.KEYCODE_DPAD_RIGHT || k == KeyEvent.KEYCODE_BACK) { focusContent(); return true; }
+            if (sideOpen) {
+                if (k == KeyEvent.KEYCODE_DPAD_RIGHT || k == KeyEvent.KEYCODE_BACK) { closeSidebar(true); return true; }
+                if (k == KeyEvent.KEYCODE_DPAD_LEFT) return true;
             } else if (f != null) {
-                if (k == KeyEvent.KEYCODE_DPAD_LEFT && atRowStart(f)) { lastContentFocus = f; sideItems.get(showingApps ? 1 : 0).requestFocus(); return true; }
+                if (k == KeyEvent.KEYCODE_DPAD_LEFT && atRowStart(f)) { openSidebar(); return true; }
                 if (k == KeyEvent.KEYCODE_BACK) {
-                    lastContentFocus = f;
-                    if (!showingApps && rowsList.computeVerticalScrollOffset() > 0) { ((RowsLayout) rowsList.getLayoutManager()).reset(); rowsList.scrollToPosition(0); lastContentFocus = null; focusContent(); }
-                    else sideItems.get(showingApps ? 1 : 0).requestFocus();
+                    View hero = rowsList.getLayoutManager().findViewByPosition(0);
+                    if (!showingApps && (hero == null || hero.getTop() < 0)) { lastContentFocus = null; ((RowsLayout) rowsList.getLayoutManager()).reset(); rowsList.smoothScrollToPosition(0); heroFirst.requestFocus(); }
+                    else openSidebar();
                     return true;
                 }
             }
         }
         return super.dispatchKeyEvent(e);
     }
-    /** True for the first card of a row, or a card in the first column of the app grid. */
+    /** True for the hero's Play button, the first card of a row, or a card in the first column of the app grid. */
     private boolean atRowStart(View f) {
+        if (f == heroFirst) return true;
         View card = f; ViewParent p = f.getParent();
         while (p instanceof View && !(p instanceof RecyclerView)) { card = (View) p; p = p.getParent(); }
         if (!(p instanceof RecyclerView)) return false;
         RecyclerView rv = (RecyclerView) p; int pos = rv.getChildAdapterPosition(card);
-        if (rv == appsGrid) return pos % 6 == 0;
-        return pos == 0;
+        if (rv == appsGrid) return pos % COLS == 0;
+        return rv != rowsList && pos == 0;
     }
 
     // ---------- data ----------
@@ -254,83 +404,52 @@ public class MainActivity extends Activity implements Rows.Listener {
         if (h != null) rows.addAll(h.rows);
         rowsAdapter.notifyDataSetChanged();
         ((RowsLayout) rowsList.getLayoutManager()).reset();
-        frostLater(1200);
-        if (!nuvio.signedIn()) { status("Sign in to Nuvio to fill your Home: sidebar › Nuvio account."); hero("Nuvio Clean TV", "", "Your Nuvio Home, Continue Watching and collections appear here once you sign in.", ""); }
-        else if (rows.isEmpty()) status(loading ? "Loading your Nuvio Home…" : "Nothing to show yet.");
-        else status(null);
-        if (!rows.isEmpty() && getCurrentFocus() == null) focusContent();
+        pickFeatured();
+        if (nuvio.signedIn() && rows.isEmpty() && !loading) status("Nothing to show yet."); else status(null);
+        if (getCurrentFocus() == null) focusContent();
     }
     private void status(String s) { status.setText(s == null ? "" : s); status.setVisibility(s == null ? View.GONE : View.VISIBLE); }
     private void refresh(boolean force) {
         if (!nuvio.signedIn() || loading) return;
         loading = true;
-        if (rows.isEmpty()) status("Loading your Nuvio Home…");
+        if (rows.isEmpty()) showFeatured(0);
         bg.execute(() -> {
             try {
                 Nuvio.Home h = nuvio.loadHome();
                 ui.post(() -> {
                     loading = false;
-                    // Swap in the fresh Home now unless the user is browsing rows; otherwise it is saved for the next start.
+                    // Swap in the fresh Home unless the user is browsing rows; otherwise it is saved for the next start.
                     View f = getCurrentFocus();
-                    if (force || rows.isEmpty() || f == null || inSidebar(f) || showingApps) { lastContentFocus = null; showHome(h); }
+                    boolean browsing = f != null && !showingApps && !sideOpen && f.getParent() instanceof RecyclerView;
+                    if (force || rows.isEmpty() || !browsing) { lastContentFocus = null; showHome(h); }
                 });
             } catch (Exception e) {
                 ui.post(() -> {
                     loading = false;
                     if (!nuvio.signedIn()) { showHome(null); Toast.makeText(this, "Signed out of Nuvio. Sign in again from the sidebar.", Toast.LENGTH_LONG).show(); }
-                    else if (rows.isEmpty()) status("Couldn't load your Nuvio Home: " + e.getMessage());
+                    else if (rows.isEmpty()) { showFeatured(0); status("Couldn't load your Nuvio Home: " + e.getMessage()); }
                 });
             }
         });
     }
 
-    // ---------- hero ----------
-    @Override public void onItemFocused(Nuvio.Row row, Nuvio.Item it) {
-        String desc = it.description == null ? "" : it.description;
-        String meta = row.continueWatching ? Nuvio.nonEmpty(it.sub, "") + (it.year != null && !it.year.isEmpty() ? " · " + it.year : "") : Nuvio.nonEmpty(it.sub, it.year);
-        heroLater(row.title, it.name, meta, desc, Nuvio.nonEmpty(it.background, it.poster), it.logo);
-    }
-    @Override public void onFolderFocused(Nuvio.Row row, JSONObject f) {
-        JSONArray s = f.optJSONArray("sources"); int n = s == null ? 0 : s.length();
-        // Nuvio's folder hero: its wide backdrop and title logo, not the tile's cover collage.
-        String bg = str(f, "heroBackdropUrl"); if (bg.isEmpty()) bg = str(f, "coverImageUrl");
-        heroLater(row.title, f.optString("title"), n + (n == 1 ? " source" : " sources"), "OK opens this folder.", bg, str(f, "titleLogoUrl"));
-    }
+    // ---------- rows ----------
+    @Override public void onItemFocused(Nuvio.Row row, Nuvio.Item it) { }
+    @Override public void onFolderFocused(Nuvio.Row row, JSONObject f) { }
     @Override public void onRowFocused(int rowIndex, View rowView) {
-        ((RowsLayout) rowsList.getLayoutManager()).showRow(rowsList, rowIndex);
+        View f = getCurrentFocus(); if (f != null) lastContentFocus = f;
+        ((RowsLayout) rowsList.getLayoutManager()).showRow(rowsList, rowIndex + 1);
     }
-    private static String str(JSONObject o, String k) { return o.isNull(k) ? "" : o.optString(k, ""); }
-    private void heroLater(String chip, String title, String meta, String desc, String img, String logo) {
-        if (pendingHero != null) ui.removeCallbacks(pendingHero);
-        hero(title, chip, desc, meta);      // text at once
-        pendingHero = () -> {                // images once focus settles, so fast scrolling does not load every backdrop
-            Images.loadBlurred(backdrop, img, null);
-            Images.load(heroArt, img, (int) (getResources().getDisplayMetrics().widthPixels * 0.66f), null);
-            if (logo != null && !logo.isEmpty()) Images.load(heroLogo, logo, (int) (getResources().getDisplayMetrics().widthPixels * 0.32f), () -> { heroLogo.setVisibility(View.VISIBLE); heroTitle.setVisibility(View.GONE); });
-        };
-        ui.postDelayed(pendingHero, 220);
-        frostLater(700);
-    }
-    private void hero(String title, String chip, String desc, String meta) {
-        heroChip.setText(chip == null ? "" : chip); heroTitle.setText(title); heroTitle.setVisibility(View.VISIBLE); heroLogo.setVisibility(View.GONE); heroLogo.setImageDrawable(null); heroMeta.setText(meta == null ? "" : meta); heroDesc.setText(desc);
-        heroMeta.setVisibility(meta == null || meta.isEmpty() ? View.GONE : View.VISIBLE);
-    }
-
-    @Override public void onItem(Nuvio.Item it) {
-        try { startActivity(new Intent(this, DetailActivity.class).putExtra("item", it.toJson().toString())); } catch (Exception ignored) { }
-    }
-    @Override public void onFolder(JSONObject f) {
-        startActivity(new Intent(this, FolderActivity.class).putExtra("folder", f.toString()));
-    }
+    @Override public void onItem(Nuvio.Item it) { startActivity(new Intent(this, DetailActivity.class).putExtra("item", Launch.json(it))); }
+    @Override public void onFolder(JSONObject f) { startActivity(new Intent(this, FolderActivity.class).putExtra("folder", f.toString())); }
 
     // ---------- Nuvio ----------
     private void openNuvio() {
-        PackageManager pm = getPackageManager();
-        for (String p : NUVIO_PACKAGES) {
-            Intent i = pm.getLeanbackLaunchIntentForPackage(p); if (i == null) i = pm.getLaunchIntentForPackage(p);
-            if (i != null) { startActivity(i); Toast.makeText(this, "Nuvio has no direct link to its settings yet: open Settings in Nuvio.", Toast.LENGTH_LONG).show(); return; }
-        }
-        Toast.makeText(this, "Nuvio isn't installed.", Toast.LENGTH_LONG).show();
+        String p = Launch.pkg(this);
+        Intent i = p == null ? null : getPackageManager().getLeanbackLaunchIntentForPackage(p);
+        if (i == null && p != null) i = getPackageManager().getLaunchIntentForPackage(p);
+        if (i != null) { startActivity(i); Toast.makeText(this, "Nuvio has no direct link to its settings yet: open Settings in Nuvio.", Toast.LENGTH_LONG).show(); }
+        else Toast.makeText(this, "Nuvio isn't installed.", Toast.LENGTH_LONG).show();
     }
     private void account() {
         if (!nuvio.signedIn()) { startActivityForResult(new Intent(this, SignInActivity.class), 1); return; }
@@ -339,10 +458,10 @@ public class MainActivity extends Activity implements Rows.Listener {
                 .setMessage("Signed in as " + nuvio.email() + "\nProfile: " + prof)
                 .setPositiveButton("Switch profile", (d, w) -> pickProfile())
                 .setNeutralButton("Refresh Home", (d, w) -> { Toast.makeText(this, "Refreshing your Nuvio Home…", Toast.LENGTH_SHORT).show(); refresh(true); })
-                .setNegativeButton("Sign out", (d, w) -> { bg.execute(() -> { nuvio.signOut(); ui.post(() -> { lastContentFocus = null; showHome(null); }); }); })
+                .setNegativeButton("Sign out", (d, w) -> bg.execute(() -> { nuvio.signOut(); ui.post(() -> { lastContentFocus = null; showHome(null); }); }))
                 .show();
     }
-    private void unlock() { if (!showingApps) catalogPage.setVisibility(View.VISIBLE); focusContent(); }
+    private void unlock() { rowsList.setVisibility(showingApps ? View.GONE : View.VISIBLE); focusContent(); }
     private void pickProfile() {
         bg.execute(() -> {
             try {
@@ -352,7 +471,7 @@ public class MainActivity extends Activity implements Rows.Listener {
                 ui.post(() -> new AlertDialog.Builder(this).setTitle("Who's watching?").setItems(labels.toArray(new String[0]), (d, w) -> {
                     Runnable go = () -> { nuvio.setProfile(idx.get(w), names.get(w), locked.get(w)); lastContentFocus = null; unlock(); showHome(nuvio.cached()); refresh(true); };
                     if (locked.get(w)) Pin.ask(this, idx.get(w), names.get(w), go, this::pickProfile); else go.run();
-                }).setCancelable(!nuvio.profileName().isEmpty() && !(nuvio.profileLocked() && catalogPage.getVisibility() != View.VISIBLE)).show());
+                }).setCancelable(!nuvio.profileName().isEmpty() && rowsList.getVisibility() != View.INVISIBLE).show());
             } catch (Exception e) { ui.post(() -> Toast.makeText(this, "Couldn't load profiles: " + e.getMessage(), Toast.LENGTH_LONG).show()); }
         });
     }
@@ -362,7 +481,7 @@ public class MainActivity extends Activity implements Rows.Listener {
 
     // ---------- clock ----------
     private void tick() {
-        clock.setText(DateFormat.getTimeFormat(this).format(new Date()));
+        sideClock.setText(DateFormat.getTimeFormat(this).format(new Date()));
         ui.postDelayed(this::tick, 20000);
     }
 
@@ -383,24 +502,30 @@ public class MainActivity extends Activity implements Rows.Listener {
         return out;
     }
     final class AppsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
-        final List<App> apps; AppsAdapter(List<App> a) { apps = a; }
+        final List<App> apps; final int tileW, tileH;
+        AppsAdapter(List<App> a) {
+            apps = a;
+            int m = dp(MainActivity.this, 9);
+            tileW = (W - PAD - dp(MainActivity.this, 40)) / COLS - 2 * m; tileH = tileW * 9 / 16;   // banners are 16:9
+        }
         @Override public int getItemCount() { return apps.size(); }
         @Override public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup p, int t) {
             LinearLayout card = new LinearLayout(MainActivity.this); card.setOrientation(LinearLayout.VERTICAL); card.setFocusable(true); card.setClickable(true); card.setGravity(Gravity.CENTER_HORIZONTAL);
-            FrameLayout art = new FrameLayout(MainActivity.this); art.setBackground(round(0xFF2A2B33, 10, MainActivity.this)); art.setClipToOutline(true);
+            FrameLayout art = new FrameLayout(MainActivity.this); art.setBackground(round(0xFF2E3036, 14, MainActivity.this)); art.setClipToOutline(true);
             ImageView iv = new ImageView(MainActivity.this); iv.setScaleType(ImageView.ScaleType.FIT_CENTER); art.addView(iv, new FrameLayout.LayoutParams(-1, -1));
-            card.addView(art, new LinearLayout.LayoutParams(-1, dp(MainActivity.this, 78)));
-            TextView name = text(MainActivity.this, "", 13, Color.WHITE, false); name.setSingleLine(true); name.setPadding(0, dp(MainActivity.this, 8), 0, 0); name.setVisibility(View.INVISIBLE);
+            card.addView(art, new LinearLayout.LayoutParams(tileW, tileH));
+            TextView name = text(MainActivity.this, "", 14, Color.WHITE, false); name.setSingleLine(true); name.setPadding(0, dp(MainActivity.this, 10), 0, 0); name.setVisibility(View.INVISIBLE);
             card.addView(name);
-            RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(-1, -2); lp.setMargins(dp(MainActivity.this, 8), dp(MainActivity.this, 8), dp(MainActivity.this, 8), dp(MainActivity.this, 8)); card.setLayoutParams(lp);
-            card.setOnFocusChangeListener((v, f) -> { v.animate().scaleX(f ? 1.1f : 1f).scaleY(f ? 1.1f : 1f).setDuration(140).start(); art.setForeground(f ? Rows.ring(MainActivity.this, 10) : null); name.setVisibility(f ? View.VISIBLE : View.INVISIBLE); v.setZ(f ? 1 : 0); if (f) lastContentFocus = v; });
+            int m = dp(MainActivity.this, 9);
+            RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(-1, -2); lp.setMargins(m, m, m, m); card.setLayoutParams(lp);
+            card.setOnFocusChangeListener((v, f) -> { v.animate().scaleX(f ? 1.1f : 1f).scaleY(f ? 1.1f : 1f).setDuration(140).start(); art.setForeground(f ? Rows.ring(MainActivity.this, 14) : null); name.setVisibility(f ? View.VISIBLE : View.INVISIBLE); v.setZ(f ? 1 : 0); if (f) lastContentFocus = v; });
             return new RecyclerView.ViewHolder(card) { };
         }
         @Override public void onBindViewHolder(RecyclerView.ViewHolder h, int pos) {
             App a = apps.get(pos); LinearLayout card = (LinearLayout) h.itemView;
             FrameLayout art = (FrameLayout) card.getChildAt(0); ImageView iv = (ImageView) art.getChildAt(0); TextView name = (TextView) card.getChildAt(1);
             iv.setImageDrawable(a.banner != null ? a.banner : a.icon); iv.setScaleType(a.banner != null ? ImageView.ScaleType.CENTER_CROP : ImageView.ScaleType.FIT_CENTER);
-            iv.setPadding(a.banner != null ? 0 : dp(MainActivity.this, 14), a.banner != null ? 0 : dp(MainActivity.this, 14), a.banner != null ? 0 : dp(MainActivity.this, 14), a.banner != null ? 0 : dp(MainActivity.this, 14));
+            int ip = a.banner != null ? 0 : dp(MainActivity.this, 16); iv.setPadding(ip, ip, ip, ip);
             name.setText(a.label);
             card.setOnClickListener(v -> { if (a.launch != null) startActivity(a.launch); });
         }

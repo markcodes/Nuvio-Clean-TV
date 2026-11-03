@@ -60,17 +60,54 @@ final class Pin {
     }
 
     interface Got { void pin(String p); }
+    /** An on-screen PIN pad: digits never appear, only dots. Remote number keys work too. */
     private static void prompt(Activity a, String title, String msg, Got got, Runnable onCancel) {
-        EditText e = new EditText(a);
-        e.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
-        e.setTransformationMethod(PasswordTransformationMethod.getInstance());
-        e.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(8)});
-        new AlertDialog.Builder(a).setTitle(title).setMessage(msg).setView(e)
-                .setPositiveButton("OK", (d, w) -> got.pin(e.getText().toString().trim()))
-                .setNegativeButton("Cancel", (d, w) -> { if (onCancel != null) onCancel.run(); })
-                .setOnCancelListener(d -> { if (onCancel != null) onCancel.run(); })
-                .setCancelable(onCancel == null).show();
-        e.requestFocus();
+        android.widget.LinearLayout box = new android.widget.LinearLayout(a); box.setOrientation(android.widget.LinearLayout.VERTICAL);
+        box.setGravity(android.view.Gravity.CENTER_HORIZONTAL); box.setPadding(Rows.dp(a, 28), Rows.dp(a, 24), Rows.dp(a, 28), Rows.dp(a, 20));
+        box.setBackground(Rows.round(0xF21C1D22, 24, a));
+        box.addView(Rows.text(a, title, 22, 0xFFFFFFFF, true));
+        android.widget.TextView m = Rows.text(a, msg, 14, 0xFFB3B3B3, false); m.setGravity(android.view.Gravity.CENTER); m.setMaxWidth(Rows.dp(a, 380)); m.setPadding(0, Rows.dp(a, 8), 0, Rows.dp(a, 14));
+        box.addView(m);
+        android.widget.TextView dots = Rows.text(a, "", 30, 0xFFFFFFFF, true); dots.setLetterSpacing(0.35f); dots.setPadding(0, 0, 0, Rows.dp(a, 14));
+        box.addView(dots);
+        StringBuilder pin = new StringBuilder();
+        Runnable show = () -> { StringBuilder d = new StringBuilder(); for (int i = 0; i < Math.max(4, pin.length()); i++) d.append(i < pin.length() ? "●" : "○"); dots.setText(d); };
+        show.run();
+        AlertDialog[] dlg = new AlertDialog[1];
+        boolean[] done = {false};
+        Runnable submit = () -> { if (pin.length() < 4) { Toast.makeText(a, "Enter at least 4 digits.", Toast.LENGTH_SHORT).show(); return; } done[0] = true; dlg[0].dismiss(); got.pin(pin.toString()); };
+        String[] keys = {"1","2","3","4","5","6","7","8","9","⌫","0","OK"};
+        android.view.View first = null;
+        for (int r = 0; r < 4; r++) {
+            android.widget.LinearLayout row = new android.widget.LinearLayout(a);
+            for (int c = 0; c < 3; c++) {
+                String k = keys[r * 3 + c];
+                android.widget.TextView b = Rows.text(a, k, 22, 0xFFFFFFFF, true); b.setGravity(android.view.Gravity.CENTER); b.setFocusable(true); b.setClickable(true);
+                b.setBackground(Rows.round(0xFF2E3036, 36, a));
+                b.setOnFocusChangeListener((v, f) -> { v.setBackground(Rows.round(f ? 0xFFF4F4F6 : 0xFF2E3036, 36, a)); ((android.widget.TextView) v).setTextColor(f ? 0xFF121316 : 0xFFFFFFFF); v.animate().scaleX(f ? 1.08f : 1f).scaleY(f ? 1.08f : 1f).setDuration(100).start(); });
+                b.setOnClickListener(v -> {
+                    if (k.equals("OK")) submit.run();
+                    else if (k.equals("⌫")) { if (pin.length() > 0) pin.setLength(pin.length() - 1); show.run(); }
+                    else if (pin.length() < 8) { pin.append(k); show.run(); }
+                });
+                android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(Rows.dp(a, 72), Rows.dp(a, 52)); lp.setMargins(Rows.dp(a, 6), Rows.dp(a, 6), Rows.dp(a, 6), Rows.dp(a, 6));
+                row.addView(b, lp);
+                if (first == null) first = b;
+            }
+            box.addView(row);
+        }
+        dlg[0] = new AlertDialog.Builder(a).setView(box).create();
+        dlg[0].setOnKeyListener((d, code, ev) -> {
+            if (ev.getAction() != android.view.KeyEvent.ACTION_DOWN) return false;
+            if (code >= android.view.KeyEvent.KEYCODE_0 && code <= android.view.KeyEvent.KEYCODE_9) { if (pin.length() < 8) { pin.append((char) ('0' + code - android.view.KeyEvent.KEYCODE_0)); show.run(); } return true; }
+            if (code == android.view.KeyEvent.KEYCODE_DEL) { if (pin.length() > 0) pin.setLength(pin.length() - 1); show.run(); return true; }
+            return false;
+        });
+        dlg[0].setOnDismissListener(d -> { if (!done[0] && onCancel != null) onCancel.run(); });
+        dlg[0].setCancelable(onCancel == null || true);
+        dlg[0].show();
+        if (dlg[0].getWindow() != null) dlg[0].getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0));
+        if (first != null) first.requestFocus();
     }
 
     static void clearAll(Context c) { prefs(c).edit().clear().apply(); }

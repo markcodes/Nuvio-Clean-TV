@@ -48,7 +48,7 @@ final class Rows {
             Context c = p.getContext();
             LinearLayout box = new LinearLayout(c); box.setOrientation(LinearLayout.VERTICAL);
             box.setLayoutParams(new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-            TextView t = text(c, "", 17, 0xE6FFFFFF, true); t.setPadding(startPad + dp(c, 4), dp(c, 14), 0, dp(c, 2)); box.addView(t);
+            TextView t = text(c, "", 18, 0xF2FFFFFF, true); t.setPadding(startPad + dp(c, 4), dp(c, 14), 0, dp(c, 2)); box.addView(t);
             RecyclerView r = new RecyclerView(c); r.setLayoutManager(new LinearLayoutManager(c, LinearLayoutManager.HORIZONTAL, false));
             r.setRecycledViewPool(cardPool); r.setClipToPadding(false); r.setClipChildren(true); r.setPadding(startPad, dp(c, 14), dp(c, 48), dp(c, 14));
             r.setItemAnimator(null); r.setHasFixedSize(true);
@@ -67,7 +67,7 @@ final class Rows {
         final Nuvio.Row row; final Listener l; final Runnable rowFocused;
         CardsAdapter(Nuvio.Row row, Listener l, Runnable rowFocused) { this.row = row; this.l = l; this.rowFocused = rowFocused; }
         static final class VH extends RecyclerView.ViewHolder {
-            FrameLayout frame, art; ImageView img; TextView fallback, title, sub; View bar;
+            FrameLayout frame, art; ImageView img; TextView fallback, title, sub, inner; View bar, shade;
             VH(View v) { super(v); }
         }
         @Override public int getItemCount() { return row.isCollection() ? row.folders.size() : row.items.size(); }
@@ -81,6 +81,11 @@ final class Rows {
             h.art.addView(h.img, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             h.fallback = text(c, "", 14, 0xFFB3B3B3, false); h.fallback.setGravity(Gravity.CENTER); h.fallback.setPadding(dp(c, 8), 0, dp(c, 8), 0);
             h.art.addView(h.fallback, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            h.shade = new View(c); h.shade.setBackground(new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x00000000, 0x00000000, 0xB3000000}));
+            h.art.addView(h.shade, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            h.inner = text(c, "", 12, Color.WHITE, true); h.inner.setSingleLine(true);
+            FrameLayout.LayoutParams il = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.START); il.setMargins(dp(c, 10), 0, dp(c, 10), dp(c, 20));
+            h.art.addView(h.inner, il);
             View track = new View(c); track.setBackground(round(0x66000000, 2, c)); track.setTag("track");
             FrameLayout.LayoutParams tl = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(c, 4), Gravity.BOTTOM); tl.setMargins(dp(c, 10), 0, dp(c, 10), dp(c, 10));
             h.art.addView(track, tl);
@@ -98,6 +103,7 @@ final class Rows {
             card.setOnFocusChangeListener((v, f) -> {
                 v.animate().scaleX(f ? 1.08f : 1f).scaleY(f ? 1.08f : 1f).setDuration(140).start();
                 h.frame.setBackground(f ? ring(c, 14) : null);
+                if (h.title.getText().length() > 0) h.title.setVisibility(f ? View.VISIBLE : View.INVISIBLE);
                 v.setZ(f ? 1 : 0);
                 if (f) { int pos = h.getBindingAdapterPosition(); CardsAdapter a = (CardsAdapter) h.getBindingAdapter(); if (pos < 0 || a == null) return; a.rowFocused.run();
                     if (a.row.isCollection()) a.l.onFolderFocused(a.row, a.row.folders.get(pos)); else a.l.onItemFocused(a.row, a.row.items.get(pos)); }
@@ -119,19 +125,22 @@ final class Rows {
                 fb = emoji.isEmpty() ? f.optString("title") : emoji;
                 h.fallback.setTextSize(emoji.isEmpty() ? 15 : 40);
                 h.bar.setVisibility(View.GONE); h.art.findViewWithTag("track").setVisibility(View.GONE);
+                h.inner.setVisibility(View.GONE); h.shade.setVisibility(View.GONE);
             } else {
                 Nuvio.Item it = row.items.get(pos);
                 boolean wide = row.continueWatching;
-                w = dp(c, wide ? 240 : 120); ht = dp(c, wide ? 135 : 180);
+                w = dp(c, wide ? 224 : 120); ht = dp(c, wide ? 126 : 180);
                 img = wide ? Nuvio.nonEmpty(it.background, it.poster) : Nuvio.nonEmpty(it.poster, it.background);
-                title = wide ? it.name : ""; sub = wide ? it.sub : "";
+                title = wide ? it.name : ""; sub = "";
+                h.inner.setText(wide && it.sub != null && !it.sub.isEmpty() ? "▶  " + it.sub : ""); h.inner.setVisibility(wide && it.sub != null && !it.sub.isEmpty() ? View.VISIBLE : View.GONE);
+                h.shade.setVisibility(wide ? View.VISIBLE : View.GONE);
                 fb = it.name; h.fallback.setTextSize(14);
                 if (it.pct >= 0) { h.bar.setVisibility(View.VISIBLE); h.art.findViewWithTag("track").setVisibility(View.VISIBLE); FrameLayout.LayoutParams bp = (FrameLayout.LayoutParams) h.bar.getLayoutParams(); bp.width = Math.max(dp(c, 4), (w - dp(c, 20)) * it.pct / 100); h.bar.setLayoutParams(bp); }
-                else h.bar.setVisibility(View.GONE); h.art.findViewWithTag("track").setVisibility(View.GONE);
+                else { h.bar.setVisibility(View.GONE); h.art.findViewWithTag("track").setVisibility(View.GONE); }
             }
             ViewGroup.LayoutParams ap = h.art.getLayoutParams(); if (ap == null) ap = new LinearLayout.LayoutParams(w, ht); ap.width = w; ap.height = ht; h.art.setLayoutParams(ap);
             h.title.setMaxWidth(w); h.sub.setMaxWidth(w);
-            h.title.setText(title); h.title.setVisibility(title.isEmpty() ? View.GONE : View.VISIBLE);
+            h.title.setText(title); h.title.setVisibility(title.isEmpty() ? View.GONE : (h.itemView.hasFocus() ? View.VISIBLE : View.INVISIBLE));
             h.sub.setText(sub); h.sub.setVisibility(sub.isEmpty() ? View.GONE : View.VISIBLE);
             h.fallback.setText(fb); h.fallback.setVisibility(View.VISIBLE);
             Images.load(h.img, img, w, () -> h.fallback.setVisibility(View.GONE));

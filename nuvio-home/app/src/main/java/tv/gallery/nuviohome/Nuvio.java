@@ -133,6 +133,18 @@ final class Nuvio {
         } catch (Exception e) { return null; }
     }
 
+    /** Adds a title to the profile's Nuvio library (documented: sync_push_library_items). */
+    boolean addToLibrary(Item it) {
+        try {
+            JSONObject item = new JSONObject().put("content_id", it.id).put("content_type", norm(it.type)).put("name", it.name)
+                    .put("poster", it.poster).put("background", it.background).put("description", it.description)
+                    .put("release_info", it.year).put("added_at", System.currentTimeMillis());
+            Resp r = api("POST", "/rest/v1/rpc/sync_push_library_items", new JSONObject().put("p_profile_id", profile())
+                    .put("p_origin_client_id", "nuvio-clean-tv").put("p_items", new JSONArray().put(item)).toString());
+            return r.code >= 200 && r.code < 300;
+        } catch (Exception e) { return false; }
+    }
+
     JSONArray profiles() throws Exception {
         Resp p = api("POST", "/rest/v1/rpc/sync_pull_profiles", null);
         if (p.code != 200) throw new IllegalStateException("Profiles: HTTP " + p.code);
