@@ -354,7 +354,8 @@ public class MainActivity extends Activity implements Rows.Listener {
         switch (i) {
             case 0: showPage(false); closeSidebar(true); break;
             case 1: showPage(true); closeSidebar(true); break;
-            case 2: case 3: case 4: Toast.makeText(this, LABELS[i] + " arrives in the next build", Toast.LENGTH_SHORT).show(); break;
+            case 2: case 3: Toast.makeText(this, LABELS[i] + " arrives in the next build", Toast.LENGTH_SHORT).show(); break;
+            case 4: settings(); break;
             case 5: openNuvio(); break;
         }
     }
@@ -447,7 +448,9 @@ public class MainActivity extends Activity implements Rows.Listener {
         View f = getCurrentFocus(); if (f != null) lastContentFocus = f;
         ((RowsLayout) rowsList.getLayoutManager()).showRow(rowsList, rowIndex + 1);
     }
-    @Override public void onItem(Nuvio.Item it) { startActivity(new Intent(this, DetailActivity.class).putExtra("item", Launch.json(it))); }
+    @Override public void onItem(Nuvio.Item it) { startActivity(DetailActivity.intent(this, it, rowOf(it))); }
+    /** The catalog row a title sits in, for the details page's "More like this". */
+    private List<Nuvio.Item> rowOf(Nuvio.Item it) { for (Nuvio.Row r : rows) if (!r.continueWatching && r.items.contains(it)) return r.items; return null; }
     @Override public void onFolder(JSONObject f) { startActivity(new Intent(this, FolderActivity.class).putExtra("folder", f.toString())); }
 
     // ---------- Nuvio ----------
@@ -490,6 +493,35 @@ public class MainActivity extends Activity implements Rows.Listener {
     }
     @Override protected void onActivityResult(int req, int res, Intent data) {
         if (req == 1 && res == RESULT_OK) { showHome(null); refresh(true); pickProfile(); }
+    }
+
+    // ---------- settings ----------
+    private void settings() {
+        String k = Tmdb.key(this);
+        String[] items = {"TMDB key      " + (k.isEmpty() ? "Not set" : Tmdb.masked(k))};
+        new AlertDialog.Builder(this).setTitle("Settings").setItems(items, (d, w) -> tmdbKey()).setNegativeButton("Close", null).show();
+    }
+    /** The owner's TMDB key: checked with TMDB before it is saved; kept on this TV and sent only to TMDB. */
+    private void tmdbKey() {
+        String k = Tmdb.key(this);
+        android.widget.EditText e = new android.widget.EditText(this); e.setSingleLine(true);
+        e.setHint(k.isEmpty() ? "API key or Read Access Token" : "Current: " + Tmdb.masked(k));
+        android.widget.FrameLayout box = new android.widget.FrameLayout(this); box.setPadding(dp(this, 20), dp(this, 4), dp(this, 20), 0); box.addView(e);
+        AlertDialog dlg = new AlertDialog.Builder(this).setTitle("TMDB key")
+                .setMessage("Adds cast photos, reviews and production companies to details pages. Get a free key at themoviedb.org under Settings, API. It stays on this TV and is only sent to TMDB.")
+                .setView(box).setPositiveButton("Save", null).setNegativeButton("Cancel", null)
+                .setNeutralButton(k.isEmpty() ? null : "Remove key", (d, w) -> { Tmdb.save(this, ""); Toast.makeText(this, "TMDB key removed.", Toast.LENGTH_SHORT).show(); })
+                .create();
+        dlg.setOnShowListener(d -> dlg.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String key = e.getText().toString().trim();
+            if (key.isEmpty()) { Toast.makeText(this, "Paste your TMDB key first.", Toast.LENGTH_SHORT).show(); return; }
+            Toast.makeText(this, "Checking the key with TMDB…", Toast.LENGTH_SHORT).show();
+            bg.execute(() -> { String problem = Tmdb.check(key); ui.post(() -> {
+                if (problem == null) { Tmdb.save(this, key); Toast.makeText(this, "✓ Key works. Saved.", Toast.LENGTH_SHORT).show(); dlg.dismiss(); }
+                else Toast.makeText(this, problem, Toast.LENGTH_LONG).show();
+            }); });
+        }));
+        dlg.show();
     }
 
     // ---------- clock ----------

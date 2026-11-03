@@ -87,7 +87,8 @@ public class FolderActivity extends Activity implements Rows.Listener {
     @Override public void onFolderFocused(Nuvio.Row row, JSONObject folder) { }
     @Override public void onRowFocused(int rowIndex, View rowView) { ((RowsLayout) list.getLayoutManager()).showRow(list, rowIndex); }
     @Override public void onItem(Nuvio.Item it) {
-        try { startActivity(new Intent(this, DetailActivity.class).putExtra("item", it.toJson().toString())); } catch (Exception ignored) { }
+        List<Nuvio.Item> similar = null; for (Nuvio.Row r : rows) if (r.items.contains(it)) { similar = r.items; break; }
+        startActivity(DetailActivity.intent(this, it, similar));
     }
     @Override public void onFolder(JSONObject folder) { }
 }

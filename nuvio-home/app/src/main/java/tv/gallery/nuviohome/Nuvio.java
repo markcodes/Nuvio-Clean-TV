@@ -345,7 +345,7 @@ final class Nuvio {
         return read(c);
     }
     static Resp get(String url) throws Exception { HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection(); c.setConnectTimeout(10000); c.setReadTimeout(15000); return read(c); }
-    private static Resp read(HttpURLConnection c) throws Exception {
+    static Resp read(HttpURLConnection c) throws Exception {
         Resp r = new Resp(); r.code = c.getResponseCode();
         InputStream in = r.code >= 400 ? c.getErrorStream() : c.getInputStream();
         r.body = in == null ? "" : readAll(in); c.disconnect(); return r;
