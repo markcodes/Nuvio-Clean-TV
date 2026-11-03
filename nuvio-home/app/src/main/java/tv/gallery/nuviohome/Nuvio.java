@@ -94,7 +94,7 @@ final class Nuvio {
     }
     void signOut() {
         try { if (access != null) http("POST", API + "/auth/v1/logout", null, true); } catch (Exception ignored) { }
-        access = null; prefs.edit().clear().apply();
+        access = null; prefs.edit().clear().apply(); Pin.clearAll(ctx);
         for (File f : ctx.getFilesDir().listFiles()) if (f.getName().startsWith("home_")) f.delete();
     }
     private void keep(JSONObject j) {

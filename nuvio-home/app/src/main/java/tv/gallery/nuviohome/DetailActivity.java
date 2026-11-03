@@ -60,16 +60,16 @@ public class DetailActivity extends Activity {
         bottom.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x000D0D0D, 0x000D0D0D, 0xE60D0D0D}));
         root.addView(bottom, new FrameLayout.LayoutParams(-1, -1));
 
-        ScrollView scroll = new ScrollView(this); scroll.setVerticalScrollBarEnabled(false); scroll.setClipChildren(false);
+        ScrollView scroll = new ScrollView(this); scroll.setVerticalScrollBarEnabled(false); scroll.setClipChildren(false); scroll.setClipToPadding(false);
         LinearLayout page = new LinearLayout(this); page.setOrientation(LinearLayout.VERTICAL); page.setClipChildren(false);
-        page.setPadding(dp(this, 56), (int) (H * 0.22f), dp(this, 56), dp(this, 48));
+        page.setPadding(dp(this, 56), (int) (H * 0.22f), dp(this, 56), dp(this, 48)); page.setClipToPadding(false);
         logo = new ImageView(this); logo.setAdjustViewBounds(true); logo.setScaleType(ImageView.ScaleType.FIT_START); logo.setVisibility(View.GONE);
         page.addView(logo, new LinearLayout.LayoutParams((int) (W * 0.34f), dp(this, 100)));
         title = text(this, item.name, 36, Color.WHITE, true); title.setMaxWidth((int) (W * 0.6f));
         page.addView(title);
         metaLine = text(this, item.sub == null ? "" : item.sub, 15, 0xFFB3B3B3, false); metaLine.setPadding(0, dp(this, 12), 0, 0);
         page.addView(metaLine);
-        buttons = new LinearLayout(this); buttons.setClipChildren(false); buttons.setPadding(0, dp(this, 20), 0, 0);
+        buttons = new LinearLayout(this); buttons.setClipChildren(false); buttons.setClipToPadding(false); buttons.setPadding(dp(this, 4), dp(this, 22), dp(this, 4), dp(this, 6));
         page.addView(buttons);
         credits = text(this, "", 14, 0xFFB3B3B3, false); credits.setPadding(0, dp(this, 18), 0, 0); credits.setMaxWidth((int) (W * 0.6f));
         page.addView(credits);
@@ -108,7 +108,8 @@ public class DetailActivity extends Activity {
             else { GradientDrawable g = round(0xFFFFFFFF, 30, this); if (f) g.setStroke(dp(this, 3), 0x99FFFFFF); v.setBackground(g); }
         });
         t.setOnClickListener(l);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2); lp.rightMargin = dp(this, 14);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2); lp.rightMargin = dp(this, 18);
+        t.setPivotX(0);
         buttons.addView(t, lp);
         return t;
     }

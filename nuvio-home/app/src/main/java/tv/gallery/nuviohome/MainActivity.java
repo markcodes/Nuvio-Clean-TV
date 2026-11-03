@@ -104,7 +104,7 @@ public class MainActivity extends Activity implements Rows.Listener {
 
         // Catalog page
         catalogPage = new LinearLayout(this); catalogPage.setOrientation(LinearLayout.VERTICAL);
-        heroText = new LinearLayout(this); heroText.setOrientation(LinearLayout.VERTICAL);
+        heroText = new LinearLayout(this); heroText.setOrientation(LinearLayout.VERTICAL); heroText.setPadding(dp(this, 104), 0, 0, 0);
         heroChip = text(this, "", 13, 0xD9FFFFFF, false);
         heroTitle = text(this, "", 34, Color.WHITE, true); heroTitle.setMaxLines(2); heroTitle.setPadding(0, dp(this, 6), 0, 0);
         heroMeta = text(this, "", 14, 0xE6FFFFFF, false); heroMeta.setPadding(0, dp(this, 8), 0, 0);
@@ -112,13 +112,13 @@ public class MainActivity extends Activity implements Rows.Listener {
         heroDesc.setMaxWidth((int) (W * 0.42f));
         heroText.addView(heroChip); heroText.addView(heroTitle); heroText.addView(heroMeta); heroText.addView(heroDesc);
         catalogPage.addView(heroText, new LinearLayout.LayoutParams(-1, (int) (H * 0.40f)));
-        status = text(this, "", 16, 0xFFB3B3B3, false); status.setVisibility(View.GONE);
+        status = text(this, "", 16, 0xFFB3B3B3, false); status.setVisibility(View.GONE); status.setPadding(dp(this, 104), 0, 0, 0);
         catalogPage.addView(status);
         rowsList = new RecyclerView(this); rowsList.setLayoutManager(new RowsLayout(this)); rowsList.setItemAnimator(null);
         rowsList.setClipToPadding(false); rowsList.setPadding(0, 0, 0, (int) (H * 0.5f));
-        rowsAdapter = new Rows.RowsAdapter(rows, this); rowsList.setAdapter(rowsAdapter);
+        rowsAdapter = new Rows.RowsAdapter(rows, this, dp(this, 104)); rowsList.setAdapter(rowsAdapter);
         catalogPage.addView(rowsList, new LinearLayout.LayoutParams(-1, 0, 1));
-        FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(-1, -1); cp.leftMargin = dp(this, 104); cp.topMargin = dp(this, 36);
+        FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(-1, -1); cp.topMargin = dp(this, 36);
         root.addView(catalogPage, cp);
 
         // Applications page
@@ -335,10 +335,11 @@ public class MainActivity extends Activity implements Rows.Listener {
         bg.execute(() -> {
             try {
                 JSONArray ps = nuvio.profiles();
-                List<String> names = new ArrayList<>(); List<Integer> idx = new ArrayList<>();
-                for (int i = 0; i < ps.length(); i++) { JSONObject p = ps.getJSONObject(i); names.add(p.optString("name") + (p.optBoolean("pin_enabled") ? " (PIN)" : "")); idx.add(p.optInt("profile_index")); }
-                ui.post(() -> new AlertDialog.Builder(this).setTitle("Who's watching?").setItems(names.toArray(new String[0]), (d, w) -> {
-                    nuvio.setProfile(idx.get(w), names.get(w)); lastContentFocus = null; showHome(nuvio.cached()); refresh(true);
+                List<String> names = new ArrayList<>(), labels = new ArrayList<>(); List<Integer> idx = new ArrayList<>(); List<Boolean> locked = new ArrayList<>();
+                for (int i = 0; i < ps.length(); i++) { JSONObject p = ps.getJSONObject(i); names.add(p.optString("name")); locked.add(p.optBoolean("pin_enabled")); labels.add(p.optString("name") + (p.optBoolean("pin_enabled") ? "  🔒" : "")); idx.add(p.optInt("profile_index")); }
+                ui.post(() -> new AlertDialog.Builder(this).setTitle("Who's watching?").setItems(labels.toArray(new String[0]), (d, w) -> {
+                    Runnable go = () -> { nuvio.setProfile(idx.get(w), names.get(w)); lastContentFocus = null; showHome(nuvio.cached()); refresh(true); };
+                    if (locked.get(w) && idx.get(w) != nuvio.profile()) Pin.ask(this, idx.get(w), names.get(w), go); else go.run();
                 }).show());
             } catch (Exception e) { ui.post(() -> Toast.makeText(this, "Couldn't load profiles: " + e.getMessage(), Toast.LENGTH_LONG).show()); }
         });
