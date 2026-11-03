@@ -118,6 +118,21 @@ final class Nuvio {
         return r;
     }
 
+    /**
+     * Checks a profile PIN with Nuvio, the way Nuvio's own app does (verify_profile_pin; not in the public API docs,
+     * so it can change). Returns 1 unlocked, 0 wrong PIN, -N locked for N seconds, or null if Nuvio couldn't be asked.
+     */
+    Integer verifyPin(int profile, String pin) {
+        try {
+            Resp r = api("POST", "/rest/v1/rpc/verify_profile_pin", new JSONObject().put("p_profile_id", profile).put("p_pin", pin).toString());
+            if (r.code != 200) return null;
+            String b = r.body.trim(); JSONObject o = b.startsWith("[") ? new JSONArray(b).optJSONObject(0) : new JSONObject(b);
+            if (o == null || !o.has("unlocked")) return null;
+            if (o.optBoolean("unlocked")) return 1;
+            int wait = o.optInt("retry_after_seconds", 0); return wait > 0 ? -wait : 0;
+        } catch (Exception e) { return null; }
+    }
+
     JSONArray profiles() throws Exception {
         Resp p = api("POST", "/rest/v1/rpc/sync_pull_profiles", null);
         if (p.code != 200) throw new IllegalStateException("Profiles: HTTP " + p.code);

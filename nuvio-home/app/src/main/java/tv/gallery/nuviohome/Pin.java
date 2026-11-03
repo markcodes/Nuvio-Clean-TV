@@ -20,12 +20,26 @@ import java.security.SecureRandom;
 final class Pin {
     private static SharedPreferences prefs(Context c) { return c.getSharedPreferences("pins", Context.MODE_PRIVATE); }
 
+    /** Asks for the profile's Nuvio PIN and checks it with Nuvio. If Nuvio can't be asked, falls back to the PIN on this TV. */
     static void ask(Activity a, int profile, String name, Runnable onOk, Runnable onCancel) {
+        prompt(a, name + "'s PIN", "Enter " + name + "'s Nuvio PIN.", pin -> new Thread(() -> {
+            Integer r = new Nuvio(a).verifyPin(profile, pin);
+            a.runOnUiThread(() -> {
+                if (r == null) { Toast.makeText(a, "Couldn't check the PIN with Nuvio. Using this TV's PIN instead.", Toast.LENGTH_LONG).show(); askLocal(a, profile, name, onOk, onCancel); }
+                else if (r == 1) onOk.run();
+                else if (r < 0) { Toast.makeText(a, "Too many tries. Nuvio says wait " + (-r) + " seconds.", Toast.LENGTH_LONG).show(); if (onCancel != null) onCancel.run(); }
+                else { Toast.makeText(a, "Wrong PIN.", Toast.LENGTH_SHORT).show(); ask(a, profile, name, onOk, onCancel); }
+            });
+        }).start(), onCancel);
+    }
+
+    /** The fallback: a PIN kept on this TV (salted hash), set on first use. */
+    static void askLocal(Activity a, int profile, String name, Runnable onOk, Runnable onCancel) {
         String stored = prefs(a).getString("p" + profile, null);
         if (stored == null) set(a, profile, name, onOk, onCancel, null);
         else prompt(a, name + "'s PIN", "Enter the PIN for " + name + " on this TV.", pin -> {
             if (hash(prefs(a).getString("s" + profile, ""), pin).equals(stored)) onOk.run();
-            else { Toast.makeText(a, "Wrong PIN.", Toast.LENGTH_SHORT).show(); ask(a, profile, name, onOk, onCancel); }
+            else { Toast.makeText(a, "Wrong PIN.", Toast.LENGTH_SHORT).show(); askLocal(a, profile, name, onOk, onCancel); }
         }, onCancel);
     }
 
