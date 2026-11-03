@@ -85,6 +85,12 @@ public class FolderActivity extends Activity implements Rows.Listener {
         Images.loadBlurred(backdrop, Nuvio.nonEmpty(it.background, it.poster), null);
     }
     @Override public void onFolderFocused(Nuvio.Row row, JSONObject folder) { }
+    @Override public boolean dispatchKeyEvent(android.view.KeyEvent e) {
+        int k = e.getKeyCode(); View f = getCurrentFocus();
+        if (e.getAction() == android.view.KeyEvent.ACTION_DOWN && f != null && (k == android.view.KeyEvent.KEYCODE_DPAD_DOWN || k == android.view.KeyEvent.KEYCODE_DPAD_UP)
+                && RowsLayout.moveVertical(list, f, k == android.view.KeyEvent.KEYCODE_DPAD_DOWN)) return true;
+        return super.dispatchKeyEvent(e);
+    }
     @Override public void onRowFocused(int rowIndex, View rowView) { ((RowsLayout) list.getLayoutManager()).showRow(list, rowIndex); }
     @Override public void onItem(Nuvio.Item it) {
         List<Nuvio.Item> similar = null; for (Nuvio.Row r : rows) if (r.items.contains(it)) { similar = r.items; break; }

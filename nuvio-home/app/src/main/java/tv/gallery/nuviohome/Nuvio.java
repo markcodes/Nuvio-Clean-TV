@@ -145,6 +145,45 @@ final class Nuvio {
         } catch (Exception e) { return false; }
     }
 
+    // ---------- watched state (the same calls as the official Nuvio app's WatchedItemsSyncService) ----------
+    /** A movie (season/episode < 0) or an episode, as one entry of Nuvio's watched list. */
+    static final class Mark { final int season, episode; Mark(int s, int e) { season = s; episode = e; } }
+
+    /** The profile's watched entries for one title: "s:e" keys, "-1:-1" for a movie. null if Nuvio couldn't be asked. */
+    java.util.Set<String> watched(String contentId) {
+        try {
+            java.util.Set<String> out = new java.util.HashSet<>();
+            for (int page = 1; page <= 10; page++) {
+                Resp r = api("POST", "/rest/v1/rpc/sync_pull_watched_items", new JSONObject().put("p_profile_id", profile()).put("p_page", page).put("p_page_size", 900).toString());
+                if (r.code != 200) return null;
+                JSONArray a = new JSONArray(r.body);
+                for (int i = 0; i < a.length(); i++) {
+                    JSONObject o = a.getJSONObject(i);
+                    if (!contentId.equals(o.optString("content_id"))) continue;
+                    out.add((o.isNull("season") ? -1 : o.optInt("season")) + ":" + (o.isNull("episode") ? -1 : o.optInt("episode")));
+                }
+                if (a.length() < 900) break;
+            }
+            return out;
+        } catch (Exception e) { return null; }
+    }
+    /** Marks entries watched (sync_push_watched_items) or unwatched (sync_delete_watched_items). */
+    boolean setWatched(String contentId, String type, String title, List<Mark> marks, boolean watched) {
+        try {
+            JSONArray a = new JSONArray(); long now = System.currentTimeMillis();
+            for (Mark m : marks) {
+                JSONObject o = new JSONObject().put("content_id", contentId);
+                if (watched) o.put("content_type", norm(type)).put("title", title == null ? "" : title).put("watched_at", now)
+                        .put("season", m.season < 0 ? JSONObject.NULL : m.season).put("episode", m.episode < 0 ? JSONObject.NULL : m.episode);
+                else { if (m.season >= 0) o.put("season", m.season); if (m.episode >= 0) o.put("episode", m.episode); }
+                a.put(o);
+            }
+            JSONObject body = new JSONObject().put("p_profile_id", profile()).put("p_origin_client_id", "nuvio-clean-tv").put(watched ? "p_items" : "p_keys", a);
+            Resp r = api("POST", "/rest/v1/rpc/" + (watched ? "sync_push_watched_items" : "sync_delete_watched_items"), body.toString());
+            return r.code >= 200 && r.code < 300;
+        } catch (Exception e) { return false; }
+    }
+
     JSONArray profiles() throws Exception {
         Resp p = api("POST", "/rest/v1/rpc/sync_pull_profiles", null);
         if (p.code != 200) throw new IllegalStateException("Profiles: HTTP " + p.code);

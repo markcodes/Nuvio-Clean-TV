@@ -68,7 +68,8 @@ public class DetailActivity extends Activity {
     private JSONObject meta;
     private final List<Nuvio.Item> similar = new ArrayList<>();
     private ImageView backdrop, logo;
-    private View dim, playBtn;
+    private View dim, playBtn, watchedBtn;
+    private Boolean isWatched;
     private TextView title, metaText, chip, desc, facts, credits;
     private Page scroll;
     private LinearLayout page, seasonsRow;
@@ -151,7 +152,7 @@ public class DetailActivity extends Activity {
         if (item.season > 0) pl += "  S" + item.season + " E" + item.episode;
         playBtn = button(btns, R.drawable.ic_play, pl, v -> playDefault());
         button(btns, R.drawable.ic_add, null, v -> addToLibrary());
-        button(btns, R.drawable.ic_info, null, v -> info());
+        watchedBtn = button(btns, R.drawable.ic_check, "Mark as Watched", v -> toggleWatched());
         col.addView(btns);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(this, 380), -2, Gravity.BOTTOM | Gravity.START);
         lp.leftMargin = PAD; lp.bottomMargin = dp(this, 70);
@@ -268,7 +269,7 @@ public class DetailActivity extends Activity {
             if (h != null && h.addons != null) for (int i = 0; i < h.addons.length(); i++) addons.add(Nuvio.addonFrom(h.addons.optJSONObject(i)));
             JSONObject m = nuvio.findMeta(addons, Nuvio.norm(item.type), item.id);
             if (similar.isEmpty() && h != null) fallbackSimilar(h);
-            runOnUiThread(() -> { if (m != null) show(m); if (similar.size() > 0 && rowOf(moreSec).getChildCount() == 0) showSimilar(); });
+            runOnUiThread(() -> { if (m != null) show(m); if (similar.size() > 0 && rowOf(moreSec).getChildCount() == 0) showSimilar(); loadWatched(); });
             JSONObject t = Tmdb.details(this, Nuvio.norm(item.type), item.id);
             if (t != null) runOnUiThread(() -> showTmdb(t));
         }).start();
@@ -490,11 +491,43 @@ public class DetailActivity extends Activity {
     private void addToLibrary() {
         new Thread(() -> { boolean ok = new Nuvio(this).addToLibrary(item); runOnUiThread(() -> Toast.makeText(this, ok ? "Added " + item.name + " to your Nuvio library" : "Couldn't add to your Nuvio library", Toast.LENGTH_SHORT).show()); }).start();
     }
-    private void info() {
-        String d = desc.getText().toString();
-        String c = credits.getText().toString();
-        new AlertDialog.Builder(this).setTitle(title.getText()).setMessage(d + (c.isEmpty() ? "" : "\n\n" + c))
-                .setPositiveButton("Close", null).setNeutralButton("Open in Nuvio", (x, w) -> openNuvioDetail()).show();
+    /** What the watched button covers: the movie, or every episode of the series (specials aside). */
+    private List<Nuvio.Mark> marks() {
+        List<Nuvio.Mark> m = new ArrayList<>();
+        if (!"series".equals(Nuvio.norm(item.type))) { m.add(new Nuvio.Mark(-1, -1)); return m; }
+        for (java.util.Map.Entry<Integer, List<JSONObject>> e : seasons.entrySet()) {
+            if (e.getKey() == 0 && seasons.size() > 1) continue;
+            for (JSONObject v : e.getValue()) m.add(new Nuvio.Mark(e.getKey(), v.optInt("episode", v.optInt("number"))));
+        }
+        return m;
+    }
+    private void loadWatched() {
+        new Thread(() -> {
+            java.util.Set<String> w = new Nuvio(this).watched(item.id);
+            if (w == null) return;
+            List<Nuvio.Mark> m = marks();
+            boolean all = !m.isEmpty(); for (Nuvio.Mark k : m) if (!w.contains(k.season + ":" + k.episode)) { all = false; break; }
+            final boolean done = all;
+            runOnUiThread(() -> showWatched(done));
+        }).start();
+    }
+    private void showWatched(boolean w) {
+        isWatched = w;
+        LinearLayout b = (LinearLayout) watchedBtn;
+        ((TextView) b.getChildAt(1)).setText(w ? "Watched" : "Mark as Watched");
+    }
+    private void toggleWatched() {
+        boolean to = isWatched == null || !isWatched;
+        List<Nuvio.Mark> m = marks();
+        if (m.isEmpty()) { Toast.makeText(this, "Still loading the episodes…", Toast.LENGTH_SHORT).show(); return; }
+        String name = title.getText().toString();
+        new Thread(() -> {
+            boolean ok = new Nuvio(this).setWatched(item.id, item.type, name, m, to);
+            runOnUiThread(() -> {
+                if (ok) { showWatched(to); Toast.makeText(this, to ? "Marked as watched in Nuvio" : "Marked as unwatched in Nuvio", Toast.LENGTH_SHORT).show(); }
+                else Toast.makeText(this, "Couldn't update Nuvio. Try again.", Toast.LENGTH_SHORT).show();
+            });
+        }).start();
     }
     @Override public boolean dispatchKeyEvent(KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.KEYCODE_BACK && e.getAction() == KeyEvent.ACTION_DOWN && scroll != null && scroll.getScrollY() > 0) {

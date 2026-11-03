@@ -64,10 +64,10 @@ final class Pin {
         android.widget.LinearLayout box = new android.widget.LinearLayout(a); box.setOrientation(android.widget.LinearLayout.VERTICAL);
         box.setGravity(android.view.Gravity.CENTER_HORIZONTAL); box.setPadding(Rows.dp(a, 18), Rows.dp(a, 16), Rows.dp(a, 18), Rows.dp(a, 14));
         box.setBackground(Rows.round(0xF21C1D22, 18, a));
-        box.addView(Rows.text(a, title, 17, 0xFFFFFFFF, true));
+        android.widget.TextView tt = Rows.text(a, title, 17, 0xFFFFFFFF, true); tt.setGravity(android.view.Gravity.CENTER); box.addView(tt);
         android.widget.TextView m = Rows.text(a, msg, 12, 0xFFB3B3B3, false); m.setGravity(android.view.Gravity.CENTER);  m.setPadding(0, Rows.dp(a, 6), 0, Rows.dp(a, 10));
         box.addView(m);
-        android.widget.TextView dots = Rows.text(a, "", 20, 0xFFFFFFFF, true); dots.setLetterSpacing(0.35f); dots.setPadding(0, 0, 0, Rows.dp(a, 8));
+        android.widget.TextView dots = Rows.text(a, "", 20, 0xFFFFFFFF, true); dots.setLetterSpacing(0.35f); dots.setGravity(android.view.Gravity.CENTER); dots.setPadding(0, 0, 0, Rows.dp(a, 8));
         box.addView(dots);
         StringBuilder pin = new StringBuilder();
         Runnable show = () -> { StringBuilder d = new StringBuilder(); for (int i = 0; i < 4; i++) d.append(i < pin.length() ? "●" : "○"); dots.setText(d); };
