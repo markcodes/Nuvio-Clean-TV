@@ -28,6 +28,8 @@ final class RowsLayout extends LinearLayoutManager {
         startSmoothScroll(s);
     }
     void reset() { current = -1; }
+    /** Keep a screen of rows laid out above and below, so Up and Down always find the row they move to. */
+    @Override protected void calculateExtraLayoutSpace(RecyclerView.State state, int[] extra) { int h = getHeight(); extra[0] = h; extra[1] = h; }
 
     /**
      * Up/Down from a card to the next row lands on the card at the same place on screen. Android's own search
@@ -49,14 +51,6 @@ final class RowsLayout extends LinearLayoutManager {
         RecyclerView target = cardsIn(vh.itemView);
         if (target == null) return false;
         int[] a = new int[2], b = new int[2]; inner.getLocationOnScreen(a); target.getLocationOnScreen(b);
-        if (inner.getAdapter() != null) LAST.put(inner.getAdapter(), inner.getChildAdapterPosition(card));
-        int screen = outer.getResources().getDisplayMetrics().widthPixels;
-        // back to the tile this row had last, if it is still on screen
-        Integer last = target.getAdapter() == null ? null : LAST.get(target.getAdapter());
-        if (last != null && target.getLayoutManager() != null) {
-            View v = target.getLayoutManager().findViewByPosition(last);
-            if (v != null && b[0] + v.getLeft() >= 0 && b[0] + v.getRight() <= screen && v.requestFocus()) return true;
-        }
         // otherwise the tile under this one that starts at or before it: never further right
         int x = a[0] + card.getLeft() + Rows.dp(outer.getContext(), 8);
         View under = null, first = null; int ul = Integer.MIN_VALUE, fl = Integer.MAX_VALUE;
@@ -70,7 +64,6 @@ final class RowsLayout extends LinearLayoutManager {
         View best = under != null ? under : first;
         return best != null && best.requestFocus();
     }
-    private static final java.util.WeakHashMap<RecyclerView.Adapter<?>, Integer> LAST = new java.util.WeakHashMap<>();
 
     /** True on the last card of a sideways row, where Right should do nothing (Android would jump to another row). */
     static boolean atRowEnd(View f) {

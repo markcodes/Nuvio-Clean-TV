@@ -69,7 +69,8 @@ public class DetailActivity extends Activity {
     private Nuvio.Item item;
     private JSONObject meta;
     private final List<Nuvio.Item> similar = new ArrayList<>();
-    private ImageView backdrop, logo;
+    private ImageView backdrop, backdrop2, logo;
+    private String firstBg;
     private View dim, playBtn, watchedBtn;
     private Boolean isWatched;
     private TextView title, metaText, chip, desc, facts, credits;
@@ -107,6 +108,8 @@ public class DetailActivity extends Activity {
         root = new FrameLayout(this); root.setBackgroundColor(0xFF15161A);
         backdrop = new ImageView(this); backdrop.setScaleType(ImageView.ScaleType.CENTER_CROP);
         root.addView(backdrop, new FrameLayout.LayoutParams(-1, -1));
+        backdrop2 = new ImageView(this); backdrop2.setScaleType(ImageView.ScaleType.CENTER_CROP); backdrop2.setAlpha(0f);
+        root.addView(backdrop2, new FrameLayout.LayoutParams(-1, -1));   // the addon's backdrop fades in over the tile's
         // Apple keeps the picture bright: only a light shade at the left and bottom so the text reads.
         View left = new View(this);
         left.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[]{0x99000000, 0x5C000000, 0x24000000, 0x00000000}));
@@ -137,7 +140,8 @@ public class DetailActivity extends Activity {
         scroll.setOnScrollChangeListener((v, x, y, ox, oy) -> dim.setAlpha(Math.min(1f, y / (H * 0.55f))));
         root.getViewTreeObserver().addOnGlobalFocusChangeListener((o, n) -> follow(n));
 
-        Images.load(backdrop, Nuvio.nonEmpty(item.background, item.poster), W, null);
+        firstBg = Nuvio.nonEmpty(item.background, item.poster);
+        Images.load(backdrop, firstBg, W, null);
         showSimilar();
         playBtn.requestFocus();
         load();
@@ -157,7 +161,7 @@ public class DetailActivity extends Activity {
         GradientDrawable cb = new GradientDrawable(); cb.setCornerRadius(dp(this, 3)); cb.setStroke(Math.max(1, dp(this, 1)), 0x99FFFFFF); chip.setBackground(cb); chip.setVisibility(View.GONE);
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(-2, -2); clp.leftMargin = dp(this, 8); mr.addView(chip, clp);
         col.addView(mr);
-        desc = text(this, item.description == null ? "" : item.description, 12, 0xF2FFFFFF, false); desc.setMaxLines(4); desc.setLineSpacing(0, 1.3f); desc.setPadding(0, dp(this, 8), 0, 0); shadow(desc);
+        desc = text(this, item.description == null ? "" : item.description, 12, 0xB8FFFFFF, false); desc.setMaxLines(4); desc.setLineSpacing(0, 1.3f); desc.setPadding(0, dp(this, 8), 0, 0); shadow(desc);
         col.addView(desc);
         facts = text(this, item.year == null ? "" : item.year, 12, 0xD9FFFFFF, false); facts.setPadding(0, dp(this, 8), 0, 0); shadow(facts);
         col.addView(facts);
@@ -307,9 +311,9 @@ public class DetailActivity extends Activity {
     private void show(JSONObject m) {
         meta = m;
         String bg = Nuvio.nonEmpty(m.optString("background"), item.background);
-        if (bg != null && !bg.isEmpty()) Images.load(backdrop, bg, W, null);
+        if (bg != null && !bg.isEmpty() && !bg.equals(firstBg)) Images.load(backdrop2, bg, W, () -> backdrop2.animate().alpha(1f).setDuration(250).start());
         String lg = m.optString("logo");
-        if (!lg.isEmpty()) Images.load(logo, lg, dp(this, 300), () -> { logo.setVisibility(View.VISIBLE); title.setVisibility(View.GONE); });
+        if (!lg.isEmpty()) Images.load(logo, lg, dp(this, 300), () -> { logo.setAlpha(0f); logo.setVisibility(View.VISIBLE); title.setVisibility(View.GONE); logo.animate().alpha(1f).setDuration(250).start(); });
         title.setText(Nuvio.nonEmpty(m.optString("name"), item.name));
 
         StringBuilder ml = new StringBuilder(label());

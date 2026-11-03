@@ -63,7 +63,7 @@ final class Rows {
             box.setLayoutParams(new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             TextView t = text(c, "", 18, 0xF2FFFFFF, true); t.setPadding(startPad + dp(c, 4), dp(c, 10), 0, 0); box.addView(t);
             RecyclerView r = new RecyclerView(c); r.setLayoutManager(new LinearLayoutManager(c, LinearLayoutManager.HORIZONTAL, false));
-            r.setRecycledViewPool(cardPool); r.setClipToPadding(false); r.setClipChildren(true); r.setPadding(startPad, dp(c, 22), dp(c, 48), dp(c, 32));   // room under the tiles for their shadows
+            r.setRecycledViewPool(cardPool); r.setClipToPadding(false); r.setClipChildren(false); r.setPadding(startPad, dp(c, 22), dp(c, 48), dp(c, 32));   // room under the tiles for their shadows
             r.setItemAnimator(null); r.setHasFixedSize(true);
             box.setClipChildren(false); box.addView(r, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             return new VH(box, t, r);
@@ -106,7 +106,7 @@ final class Rows {
             FrameLayout.LayoutParams bl = new FrameLayout.LayoutParams(0, dp(c, 4), Gravity.BOTTOM | Gravity.START); bl.setMargins(dp(c, 10), 0, 0, dp(c, 10));
             h.art.addView(h.bar, bl);
             // The focus ring sits around the picture (in this frame's padding), not on top of it.
-            h.frame = new FrameLayout(c); h.frame.setPadding(dp(c, 2), dp(c, 2), dp(c, 2), dp(c, 2));
+            h.frame = new FrameLayout(c); h.frame.setPadding(dp(c, 2), dp(c, 2), dp(c, 2), dp(c, 2)); h.frame.setClipChildren(false); h.frame.setClipToPadding(false);   // let the shadow out
             h.frame.addView(h.art, new FrameLayout.LayoutParams(dp(c, 120), dp(c, 180)));
             card.addView(h.frame);
             h.title = text(c, "", 13, Color.WHITE, false); h.title.setSingleLine(true); h.title.setPadding(dp(c, 5), dp(c, 6), 0, 0); card.addView(h.title);

@@ -181,8 +181,8 @@ public class MainActivity extends Activity implements Rows.Listener {
         heroView.addView(heroTitle);
         heroMeta = text(this, "", 15, 0xF2FFFFFF, true); heroMeta.setPadding(0, dp(this, 12), 0, 0);
         heroView.addView(heroMeta);
-        heroDesc = text(this, "", 15, 0xE6FFFFFF, false); heroDesc.setMaxLines(2); heroDesc.setLineSpacing(0, 1.25f); heroDesc.setPadding(0, dp(this, 8), 0, 0);
-        heroView.addView(heroDesc);
+        heroDesc = text(this, "", 14, 0xB8FFFFFF, false); heroDesc.setMaxLines(3); heroDesc.setEllipsize(android.text.TextUtils.TruncateAt.END); heroDesc.setLineSpacing(0, 1.3f); heroDesc.setPadding(0, dp(this, 8), 0, 0);
+        heroView.addView(heroDesc, new LinearLayout.LayoutParams(dp(this, 380), -2));   // Apple TV width: about 40% of the screen
         LinearLayout btns = new LinearLayout(this); btns.setGravity(Gravity.CENTER_VERTICAL); btns.setPadding(0, dp(this, 18), 0, dp(this, 4)); btns.setClipChildren(false); btns.setClipToPadding(false);
         playBtn = heroButton(btns, R.drawable.ic_play, "Play", v -> heroPlay());
         heroButton(btns, R.drawable.ic_add, null, v -> heroAdd());
@@ -609,7 +609,7 @@ public class MainActivity extends Activity implements Rows.Listener {
         }
         @Override public int getItemCount() { return apps.size(); }
         @Override public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup p, int t) {
-            LinearLayout card = new LinearLayout(MainActivity.this); card.setOrientation(LinearLayout.VERTICAL); card.setFocusable(true); card.setClickable(true); card.setGravity(Gravity.START);
+            LinearLayout card = new LinearLayout(MainActivity.this); card.setOrientation(LinearLayout.VERTICAL); card.setFocusable(true); card.setClickable(true); card.setGravity(Gravity.START); card.setClipChildren(false);
             FrameLayout art = new FrameLayout(MainActivity.this); art.setBackground(round(0xFF2E3036, Rows.CORNER, MainActivity.this)); art.setClipToOutline(true); Rows.shadow(art);
             ImageView iv = new ImageView(MainActivity.this); iv.setScaleType(ImageView.ScaleType.FIT_CENTER); art.addView(iv, new FrameLayout.LayoutParams(-1, -1));
             card.addView(art, new LinearLayout.LayoutParams(tileW, tileH));
