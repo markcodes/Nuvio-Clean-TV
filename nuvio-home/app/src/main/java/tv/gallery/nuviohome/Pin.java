@@ -104,7 +104,7 @@ final class Pin {
         dlg[0].setOnDismissListener(d -> { if (!done[0] && onCancel != null) onCancel.run(); });
         dlg[0].setCancelable(onCancel == null || true);
         dlg[0].show();
-        if (dlg[0].getWindow() != null) { dlg[0].getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0)); dlg[0].getWindow().setLayout(Rows.dp(a, 198), android.view.ViewGroup.LayoutParams.WRAP_CONTENT);   // a fixed width: TV dialog themes otherwise stretch it }
+        if (dlg[0].getWindow() != null) { dlg[0].getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0)); dlg[0].getWindow().setLayout(Rows.dp(a, 198), android.view.ViewGroup.LayoutParams.WRAP_CONTENT); }   // a fixed width: TV dialog themes otherwise stretch it
         if (first != null) first.requestFocus();
     }
 
