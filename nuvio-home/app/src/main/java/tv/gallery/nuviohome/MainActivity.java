@@ -441,6 +441,7 @@ public class MainActivity extends Activity implements Rows.Listener {
                     View f = getCurrentFocus();
                     boolean browsing = f != null && !showingApps && !sideOpen && f.getParent() instanceof RecyclerView;
                     if (force || rows.isEmpty() || !browsing) { lastContentFocus = null; showHome(h); }
+                    bg.execute(() -> Tmdb.found(this));   // pick up the TMDB key from the addons in the background
                 });
             } catch (Exception e) {
                 ui.post(() -> {
@@ -509,7 +510,8 @@ public class MainActivity extends Activity implements Rows.Listener {
     // ---------- settings ----------
     private void settings() {
         String k = Tmdb.key(this);
-        String[] items = {"TMDB key      " + (k.isEmpty() ? "Not set" : Tmdb.masked(k))};
+        String state = !Tmdb.typed(this).isEmpty() ? Tmdb.masked(k) : !k.isEmpty() ? "From " + Tmdb.foundIn(this) + " (" + Tmdb.masked(k) + ")" : "Not set";
+        String[] items = {"TMDB key      " + state};
         new AlertDialog.Builder(this).setTitle("Settings").setItems(items, (d, w) -> tmdbKey()).setNegativeButton("Close", null).show();
     }
     /** The owner's TMDB key: checked with TMDB before it is saved; kept on this TV and sent only to TMDB. */
